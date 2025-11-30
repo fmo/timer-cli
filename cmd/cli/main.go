@@ -2,15 +2,18 @@ package main
 
 import (
 	"encoding/csv"
-	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 const taskFile = "tasks.csv"
 
 func main() {
-	// var start *time.Time
+	var start time.Time
+    var end string
+
+	start = time.Now()
 
 	f, err := getCsv()
 	if err != nil {
@@ -22,14 +25,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	end = data[1][1]
 
-    fmt.Println(data[0])
+	if err := f.Truncate(0); err != nil {
+		log.Fatal(err)
+	}
 
+	if _, err := f.Seek(0, 0); err != nil {
+		log.Fatal(err)
+	}
 
 	if err := writeHeader(f); err != nil {
 		log.Fatal(err)
 	}
 
+	if err := write(f, start.Format("02-01-2006 15:04:05"), end); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getCsv() (*os.File, error) {
@@ -46,27 +58,24 @@ func getCsv() (*os.File, error) {
 }
 
 func writeHeader(f *os.File) error {
-    w := csv.NewWriter(f)
-    
-    record := []string{"start", "end"}
-
-    if err := w.Write(record); err != nil {
-        return err
-    }
-
-    w.Flush()
-    return nil
-}
-
-func write(f *os.File) error {
 	w := csv.NewWriter(f)
 
-	records := [][]string{
-		{"start", "end"},
-		{"asd", "asd"},
+	record := []string{"start", "end"}
+
+	if err := w.Write(record); err != nil {
+		return err
 	}
 
-	if err := w.WriteAll(records); err != nil {
+	w.Flush()
+	return nil
+}
+
+func write(f *os.File, start, end string) error {
+	w := csv.NewWriter(f)
+
+	record := []string{start, end}
+
+	if err := w.Write(record); err != nil {
 		return err
 	}
 	w.Flush()
