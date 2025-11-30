@@ -15,6 +15,7 @@ const (
 
 func main() {
 	var start, end time.Time
+    var startString, endString string
 
 	f, err := getCsv()
 	if err != nil {
@@ -29,12 +30,21 @@ func main() {
     start, err = time.Parse(layout, data[1][0])
     end, err = time.Parse(layout, data[1][1])
 
+    startString = start.Format(layout)
+    endString = end.Format(layout)
+
 	switch os.Args[1] {
 	case "start":
 		start = time.Now()
+        startString = start.Format(layout)
+        endString = ""
     case "end":
         end = time.Now()
+        endString = end.Format(layout)
 	default:
+        duration := end.Sub(start)
+        fmt.Println(duration)
+        
 		fmt.Printf("%v %v", data[1][0], data[1][1])
 	}
 
@@ -50,7 +60,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := write(f, start.Format(layout), end.Format(layout)); err != nil {
+	if err := write(f, startString, endString); err != nil {
 		log.Fatal(err)
 	}
 }
