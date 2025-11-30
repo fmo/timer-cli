@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,13 +10,17 @@ import (
 )
 
 const (
-    taskFile = "tasks.csv"
-    layout = "02-01-2006 15:04:05"
+	taskFile = "tasks.csv"
+	layout   = "02-01-2006 15:04:05"
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		log.Fatal(errors.New("need at least one argument"))
+	}
+
 	var start, end time.Time
-    var startString, endString string
+	var startString, endString string
 
 	f, err := getCsv()
 	if err != nil {
@@ -27,24 +32,24 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-    start, err = time.Parse(layout, data[1][0])
-    end, err = time.Parse(layout, data[1][1])
+	start, err = time.Parse(layout, data[1][0])
+	end, err = time.Parse(layout, data[1][1])
 
-    startString = start.Format(layout)
-    endString = end.Format(layout)
+	startString = start.Format(layout)
+	endString = end.Format(layout)
 
 	switch os.Args[1] {
 	case "start":
 		start = time.Now()
-        startString = start.Format(layout)
-        endString = ""
-    case "end":
-        end = time.Now()
-        endString = end.Format(layout)
+		startString = start.Format(layout)
+		endString = ""
+	case "end":
+		end = time.Now()
+		endString = end.Format(layout)
 	default:
-        duration := end.Sub(start)
-        fmt.Println(duration)
-        
+		duration := end.Sub(start)
+		fmt.Println(duration)
+
 		fmt.Printf("%v %v", data[1][0], data[1][1])
 	}
 
@@ -73,7 +78,6 @@ func getCsv() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("file %s exists returning", taskFile)
 
 	return f, nil
 }
