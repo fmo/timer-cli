@@ -2,18 +2,19 @@ package main
 
 import (
 	"encoding/csv"
+	"fmt"
 	"log"
 	"os"
 	"time"
 )
 
-const taskFile = "tasks.csv"
+const (
+    taskFile = "tasks.csv"
+    layout = "02-01-2006 15:04:05"
+)
 
 func main() {
-	var start time.Time
-    var end string
-
-	start = time.Now()
+	var start, end time.Time
 
 	f, err := getCsv()
 	if err != nil {
@@ -25,7 +26,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	end = data[1][1]
+    start, err = time.Parse(layout, data[1][0])
+    end, err = time.Parse(layout, data[1][1])
+
+	switch os.Args[1] {
+	case "start":
+		start = time.Now()
+    case "end":
+        end = time.Now()
+	default:
+		fmt.Printf("%v %v", data[1][0], data[1][1])
+	}
 
 	if err := f.Truncate(0); err != nil {
 		log.Fatal(err)
@@ -39,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := write(f, start.Format("02-01-2006 15:04:05"), end); err != nil {
+	if err := write(f, start.Format(layout), end.Format(layout)); err != nil {
 		log.Fatal(err)
 	}
 }
