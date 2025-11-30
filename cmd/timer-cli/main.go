@@ -32,11 +32,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	start, err = time.Parse(layout, data[1][0])
-	end, err = time.Parse(layout, data[1][1])
+    if data != nil {
+    	start, err = time.Parse(layout, data[1][0])
+	    end, err = time.Parse(layout, data[1][1])
 
-	startString = start.Format(layout)
-	endString = end.Format(layout)
+	    startString = start.Format(layout)
+	    endString = end.Format(layout)
+    }
 
 	switch os.Args[1] {
 	case "start":
@@ -49,8 +51,6 @@ func main() {
 	default:
 		duration := end.Sub(start)
 		fmt.Println(duration)
-
-		fmt.Printf("%v %v", data[1][0], data[1][1])
 	}
 
 	if err := f.Truncate(0); err != nil {
