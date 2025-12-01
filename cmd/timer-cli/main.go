@@ -21,6 +21,7 @@ func main() {
 
 	var start, end time.Time
 	var startString, endString string
+    var complete = false
 
 	f, err := getCsv()
 	if err != nil {
@@ -33,10 +34,15 @@ func main() {
 		log.Fatal(err)
 	}
     if data != nil {
-    	start, err = time.Parse(layout, data[1][0])
-	    end, err = time.Parse(layout, data[1][1])
-
-	    startString = start.Format(layout)
+        loc := time.FixedZone("UTC+3", 3*3600)
+    	start, err = time.ParseInLocation(layout, data[1][0], loc)
+	    end, err = time.ParseInLocation(layout, data[1][1], loc)
+        if data[1][2] == "true" {
+            complete = true
+        } else {
+            complete = false
+	    }
+        startString = start.Format(layout)
 	    endString = end.Format(layout)
     }
 
@@ -46,11 +52,11 @@ func main() {
 		startString = start.Format(layout)
 		endString = ""
 	case "end":
+        complete = true
 		end = time.Now()
 		endString = end.Format(layout)
 	default:
-		duration := end.Sub(start)
-		fmt.Println(duration)
+        countTime(start, end, complete)
 	}
 
 	if err := f.Truncate(0); err != nil {
@@ -65,9 +71,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := write(f, startString, endString); err != nil {
+	if err := write(f, startString, endString, complete); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func countTime(start, end time.Time, complete bool) {
+    ticker := time.NewTicker(1 * time.Second)
+    defer ticker.Stop()
+
+    var d time.Duration
+    for range ticker.C {
+        if complete {
+            d = end.Sub(start)
+        } else {
+            now := time.Now()
+            d = now.Sub(start)
+        }
+        d = d.Truncate(time.Second)
+        fmt.Print("\033[H\033[2J")
+        fmt.Println(d.String())
+    }
 }
 
 func getCsv() (*os.File, error) {
@@ -85,7 +109,7 @@ func getCsv() (*os.File, error) {
 func writeHeader(f *os.File) error {
 	w := csv.NewWriter(f)
 
-	record := []string{"start", "end"}
+	record := []string{"start", "end", "complete"}
 
 	if err := w.Write(record); err != nil {
 		return err
@@ -95,10 +119,18 @@ func writeHeader(f *os.File) error {
 	return nil
 }
 
-func write(f *os.File, start, end string) error {
+func write(f *os.File, start, end string, complete bool) error {
 	w := csv.NewWriter(f)
 
-	record := []string{start, end}
+    completeString := ""
+
+    if complete {
+        completeString = "true"
+    } else {
+        completeString = "false"
+    }
+
+	record := []string{start, end, completeString}
 
 	if err := w.Write(record); err != nil {
 		return err
