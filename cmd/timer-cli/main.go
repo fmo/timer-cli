@@ -59,13 +59,9 @@ func main() {
         countTime(start, end, complete)
 	}
 
-	if err := f.Truncate(0); err != nil {
-		log.Fatal(err)
-	}
-
-	if _, err := f.Seek(0, 0); err != nil {
-		log.Fatal(err)
-	}
+    if err := resetData(f); err != nil {
+        log.Fatal(err)
+    }
 
 	if err := writeHeader(f); err != nil {
 		log.Fatal(err)
@@ -74,6 +70,17 @@ func main() {
 	if err := write(f, startString, endString, complete); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func resetData(f *os.File) error {
+    if err := f.Truncate(0); err != nil {
+        return err
+    }
+    if _, err := f.Seek(0, 0); err != nil {
+        return err
+    }
+
+    return nil
 }
 
 func countTime(start, end time.Time, complete bool) {
