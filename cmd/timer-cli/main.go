@@ -25,9 +25,6 @@ func main() {
 		log.Fatal(errors.New("need at least one argument"))
 	}
 
-	var start, end time.Time
-	var complete = false
-
 	f, err := getCsv()
 	if err != nil {
 		log.Fatal(err)
@@ -57,7 +54,12 @@ func main() {
         currentTask.End = &now
         updateTask(f, tasks, currentTask)
 	default:
-		countTime(start, end, complete)
+        if currentTask == nil {
+            fmt.Printf("No active task running\n")
+            os.Exit(0)
+        }
+		countTime(currentTask)
+    
 	}
 }
 
@@ -76,22 +78,24 @@ func resetData(f *os.File) error {
     return nil
 }
 
-func countTime(start, end time.Time, complete bool) {
+func countTime(task *Task) error {
+    if task == nil {
+        return errors.New("empty task")
+    }
+    
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	var d time.Duration
 	for range ticker.C {
-		if complete {
-			d = end.Sub(start)
-		} else {
-			now := time.Now()
-			d = now.Sub(start)
-		}
+		now := time.Now()
+		d = now.Sub(*task.Start)
 		d = d.Truncate(time.Second)
 		fmt.Print("\033[H\033[2J")
 		fmt.Println(d.String())
 	}
+
+    return nil
 }
 
 func getCsv() (*os.File, error) {
