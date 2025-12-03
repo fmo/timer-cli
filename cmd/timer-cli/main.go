@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
 const (
 	taskFile = "tasks.csv"
-	layout   = "02-01-2006 15:04:05"
+	layout   = "02-01-2006 15:04:05 MST"
 )
 
 type Task struct {
@@ -41,25 +43,45 @@ func main() {
 	switch os.Args[1] {
 	case "start":
 		s := time.Now()
-        if err := write(f, Task{Start: &s, End: nil, Status: "started"}); err != nil {
-            log.Fatal(err)
-        }
+		if err := write(f, Task{Start: &s, End: nil, Status: "started"}); err != nil {
+			log.Fatal(err)
+		}
 	case "reset":
 		if err := resetData(f); err != nil {
 			log.Fatal(err)
 		}
 	case "end":
 		currentTask.Status = "done"
-        now := time.Now()
-        currentTask.End = &now
-        updateTask(f, tasks, currentTask)
+		now := time.Now()
+		currentTask.End = &now
+		updateTask(f, tasks, currentTask)
+	case "add":
+		addStart := os.Args[2]
+		addDuration := os.Args[3]
+		now := time.Now()
+		location := now.Location()
+
+		startArr := strings.Split(addStart, ":")
+
+		hour, _ := strconv.Atoi(startArr[0])
+		minute, _ := strconv.Atoi(startArr[1])
+		sec, _ := strconv.Atoi(startArr[2])
+
+		startDate := time.Date(now.Year(), time.Month(12), now.Day(), hour, minute, sec, int(00), location)
+
+        d, _ := strconv.Atoi(addDuration)
+        
+        endDate := startDate.Add(time.Minute * time.Duration(d))
+
+        record := Task{Start: &startDate, End: &endDate, Status: "done"}
+		addManual(f, record)
 	default:
-        if currentTask == nil {
-            fmt.Printf("No active task running\n")
-            os.Exit(0)
-        }
+		if currentTask == nil {
+			fmt.Printf("No active task running\n")
+			os.Exit(0)
+		}
 		countTime(currentTask)
-    
+
 	}
 }
 
@@ -70,19 +92,19 @@ func resetData(f *os.File) error {
 	if _, err := f.Seek(0, 0); err != nil {
 		return err
 	}
-    
-    if err := writeHeader(f); err != nil {
-        log.Fatal(err)
-    }
-	
-    return nil
+
+	if err := writeHeader(f); err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
 }
 
 func countTime(task *Task) error {
-    if task == nil {
-        return errors.New("empty task")
-    }
-    
+	if task == nil {
+		return errors.New("empty task")
+	}
+
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
@@ -95,7 +117,7 @@ func countTime(task *Task) error {
 		fmt.Println(d.String())
 	}
 
-    return nil
+	return nil
 }
 
 func getCsv() (*os.File, error) {
@@ -111,12 +133,12 @@ func getCsv() (*os.File, error) {
 }
 
 func write(f *os.File, task Task) error {
-    w := csv.NewWriter(f)
-    s := task.Start.Format(layout)
-    record := []string{s, "", task.Status}
-    w.Write(record)
-    w.Flush()
-    return nil
+	w := csv.NewWriter(f)
+	s := task.Start.Format(layout)
+	record := []string{s, "", task.Status}
+	w.Write(record)
+	w.Flush()
+	return nil
 }
 
 func writeHeader(f *os.File) error {
@@ -133,29 +155,29 @@ func writeHeader(f *os.File) error {
 }
 
 func updateTask(f *os.File, tasks []Task, task *Task) error {
-    updatedTasks := []Task{}
-    for _, t := range tasks {
-        if t.Start == task.Start {
-            updatedTasks = append(updatedTasks, *task)
-            continue
-        }
-        updatedTasks = append(updatedTasks, t)
-    }
+	updatedTasks := []Task{}
+	for _, t := range tasks {
+		if t.Start == task.Start {
+			updatedTasks = append(updatedTasks, *task)
+			continue
+		}
+		updatedTasks = append(updatedTasks, t)
+	}
 
-    resetData(f)
+	resetData(f)
 
-    w := csv.NewWriter(f)
+	w := csv.NewWriter(f)
 
-    for _, t := range updatedTasks {
-        s := t.Start.Format(layout)
-        e := t.End.Format(layout)
-        record := []string{s, e, t.Status}
+	for _, t := range updatedTasks {
+		s := t.Start.Format(layout)
+		e := t.End.Format(layout)
+		record := []string{s, e, t.Status}
 
-	    if err := w.Write(record); err != nil {
-		    return err
-	    }
-    	w.Flush()
-    }
+		if err := w.Write(record); err != nil {
+			return err
+		}
+		w.Flush()
+	}
 
 	return nil
 }
@@ -169,22 +191,22 @@ func getTasks(f *os.File) ([]Task, error) {
 
 	var tasks []Task
 	for i := 1; i < len(data); i++ {
-        var parsedStart, parsedEnd time.Time
-        var err error
+		var parsedStart, parsedEnd time.Time
+		var err error
 
 		if data[i][0] != "" {
-            parsedStart, err = time.Parse(layout, data[i][0])
-		    if err != nil {
-			    return nil, err
-		    }
-        }
-        
-        if data[i][1] != "" {
-		    parsedEnd, err = time.Parse(layout, data[i][1])
-		    if err != nil {
-			    return nil, err
-		    }
-        }
+			parsedStart, err = time.Parse(layout, data[i][0])
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if data[i][1] != "" {
+			parsedEnd, err = time.Parse(layout, data[i][1])
+			if err != nil {
+				return nil, err
+			}
+		}
 
 		tasks = append(tasks, Task{Start: &parsedStart, End: &parsedEnd, Status: data[i][2]})
 	}
@@ -193,11 +215,20 @@ func getTasks(f *os.File) ([]Task, error) {
 }
 
 func getCurrentTask(tasks []Task) *Task {
-    for _, task := range tasks {
-        if task.Status == "started" {
-            return &task
-        }                        
-    }
+	for _, task := range tasks {
+		if task.Status == "started" {
+			return &task
+		}
+	}
 
-    return nil
+	return nil
+}
+
+func addManual(f *os.File, t Task) {
+	w := csv.NewWriter(f)
+	start := t.Start.Format(layout)
+	end := t.End.Format(layout)
+	record := []string{start, end, "done"}
+	w.Write(record)
+	w.Flush()
 }
