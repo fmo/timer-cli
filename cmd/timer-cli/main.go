@@ -46,7 +46,9 @@ func main() {
 		if err := write(f, Task{Start: &s, End: nil, Status: "started"}); err != nil {
 			log.Fatal(err)
 		}
-	case "reset":
+	case "total":
+        fmt.Printf("Total time: %v\n", total(tasks))        
+    case "reset":
 		if err := resetData(f); err != nil {
 			log.Fatal(err)
 		}
@@ -56,6 +58,9 @@ func main() {
 		currentTask.End = &now
 		updateTask(f, tasks, currentTask)
 	case "add":
+        if len(os.Args) < 4 {
+            log.Fatal(errors.New("not enough arguments"))
+        }
 		addStart := os.Args[2]
 		addDuration := os.Args[3]
 		now := time.Now()
@@ -63,7 +68,11 @@ func main() {
 
 		startArr := strings.Split(addStart, ":")
 
-		hour, _ := strconv.Atoi(startArr[0])
+		if len(startArr) < 3 {
+            log.Fatal(errors.New("Not enough arguments"))
+        }
+
+        hour, _ := strconv.Atoi(startArr[0])
 		minute, _ := strconv.Atoi(startArr[1])
 		sec, _ := strconv.Atoi(startArr[2])
 
@@ -84,6 +93,17 @@ func main() {
 
 	}
 }
+
+func total(tasks []Task) time.Duration {
+    var d time.Duration
+    for _, task := range tasks {
+        start := *task.Start
+        end := *task.End
+        diff := end.Sub(start)
+        d += diff
+    }
+    return d
+} 
 
 func resetData(f *os.File) error {
 	if err := f.Truncate(0); err != nil {
