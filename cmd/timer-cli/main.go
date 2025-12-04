@@ -43,9 +43,11 @@ func main() {
 	switch os.Args[1] {
 	case "start":
 		s := time.Now()
-		if err := write(f, Task{Start: &s, End: nil, Status: "started"}); err != nil {
+        taskToStart := Task{Start: &s, End: nil, Status: "started"}
+		if err := write(f, taskToStart); err != nil {
 			log.Fatal(err)
 		}
+        countTime(&taskToStart)
 	case "total":
         fmt.Printf("Total time: %v\n", total(tasks))        
     case "reset":
