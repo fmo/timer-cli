@@ -98,8 +98,13 @@ func main() {
 
 func total(tasks []Task) time.Duration {
     var d time.Duration
+    day  := time.Now().Format("02")
     for _, task := range tasks {
         start := *task.Start
+        taskDay := start.Format("02")
+        if taskDay != day {
+            continue
+        }
         end := *task.End
         diff := end.Sub(start)
         d += diff
