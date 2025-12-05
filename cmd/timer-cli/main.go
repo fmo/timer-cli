@@ -86,13 +86,23 @@ func main() {
 
         record := Task{Start: &startDate, End: &endDate, Status: "done"}
 		addManual(f, record)
-	default:
+	case "show":
 		if currentTask == nil {
 			fmt.Printf("No active task running\n")
 			os.Exit(0)
 		}
 		countTime(currentTask)
-
+    default:
+        fmt.Println("Usage: ")
+        fmt.Println("  timer-cli <command>")
+        fmt.Println("")
+        fmt.Println("Commands:") 
+        fmt.Println("  timer-cli start -- starts the task")
+        fmt.Println("  timer-cli end -- ends the task") 
+        fmt.Println("  timer-cli total -- total time during day")
+        fmt.Println("  timer-cli reset -- reset the whole file and adds the header to csv")
+        fmt.Println("  timer-cli add -- adds manual time")
+        fmt.Println("  timer-cli show -- shows the current active task's running time")
 	}
 }
 
