@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+type Status string
+
+const (
+    started Status = "started"
+    done Status = "done"
+)
+
 const (
 	taskFile = "tasks.csv"
 	layout   = "02-01-2006 15:04:05 MST"
@@ -19,7 +26,7 @@ const (
 type Task struct {
 	Start  *time.Time
 	End    *time.Time
-	Status string // started, done
+	Status Status
 }
 
 func main() {
@@ -43,7 +50,7 @@ func main() {
 	switch os.Args[1] {
 	case "start":
 		s := time.Now()
-        taskToStart := Task{Start: &s, End: nil, Status: "started"}
+        taskToStart := Task{Start: &s, End: nil, Status: started}
 		if err := write(f, taskToStart); err != nil {
 			log.Fatal(err)
 		}
@@ -55,7 +62,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case "end":
-		currentTask.Status = "done"
+		currentTask.Status = done
 		now := time.Now()
 		currentTask.End = &now
 		updateTask(f, tasks, currentTask)
@@ -84,7 +91,7 @@ func main() {
         
         endDate := startDate.Add(time.Minute * time.Duration(d))
 
-        record := Task{Start: &startDate, End: &endDate, Status: "done"}
+        record := Task{Start: &startDate, End: &endDate, Status: done}
 		addManual(f, record)
 	case "show":
 		if currentTask == nil {
@@ -172,7 +179,7 @@ func getCsv() (*os.File, error) {
 func write(f *os.File, task Task) error {
 	w := csv.NewWriter(f)
 	s := task.Start.Format(layout)
-	record := []string{s, "", task.Status}
+	record := []string{s, "", string(task.Status)}
 	w.Write(record)
 	w.Flush()
 	return nil
@@ -208,7 +215,7 @@ func updateTask(f *os.File, tasks []Task, task *Task) error {
 	for _, t := range updatedTasks {
 		s := t.Start.Format(layout)
 		e := t.End.Format(layout)
-		record := []string{s, e, t.Status}
+		record := []string{s, e, string(t.Status)}
 
 		if err := w.Write(record); err != nil {
 			return err
@@ -245,7 +252,7 @@ func getTasks(f *os.File) ([]Task, error) {
 			}
 		}
 
-		tasks = append(tasks, Task{Start: &parsedStart, End: &parsedEnd, Status: data[i][2]})
+		tasks = append(tasks, Task{Start: &parsedStart, End: &parsedEnd, Status: Status(data[i][2])})
 	}
 
 	return tasks, nil
@@ -253,7 +260,7 @@ func getTasks(f *os.File) ([]Task, error) {
 
 func getCurrentTask(tasks []Task) *Task {
 	for _, task := range tasks {
-		if task.Status == "started" {
+		if task.Status == started {
 			return &task
 		}
 	}
@@ -265,7 +272,7 @@ func addManual(f *os.File, t Task) {
 	w := csv.NewWriter(f)
 	start := t.Start.Format(layout)
 	end := t.End.Format(layout)
-	record := []string{start, end, "done"}
+	record := []string{start, end, string(done)}
 	w.Write(record)
 	w.Flush()
 }
