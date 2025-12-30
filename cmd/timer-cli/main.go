@@ -14,8 +14,8 @@ import (
 type Status string
 
 const (
-    started Status = "started"
-    done Status = "done"
+	started Status = "started"
+	done    Status = "done"
 )
 
 const (
@@ -23,6 +23,7 @@ const (
 	layout   = "02-01-2006 15:04:05 MST"
 )
 
+// Task object keeps the task related data
 type Task struct {
 	Start  *time.Time
 	End    *time.Time
@@ -31,7 +32,7 @@ type Task struct {
 
 func main() {
 	if len(os.Args) < 2 {
-		log.Fatal(errors.New("need at least one argument"))
+		log.Fatal("need at least one argument")
 	}
 
 	f, err := getCsv()
@@ -50,14 +51,14 @@ func main() {
 	switch os.Args[1] {
 	case "start":
 		s := time.Now()
-        taskToStart := Task{Start: &s, End: nil, Status: started}
+		taskToStart := Task{Start: &s, End: nil, Status: started}
 		if err := write(f, taskToStart); err != nil {
 			log.Fatal(err)
 		}
-        countTime(&taskToStart)
+		countTime(&taskToStart)
 	case "total":
-        fmt.Printf("Total time: %v\n", total(tasks))        
-    case "reset":
+		fmt.Printf("Total time: %v\n", total(tasks))
+	case "reset":
 		if err := resetData(f); err != nil {
 			log.Fatal(err)
 		}
@@ -67,9 +68,9 @@ func main() {
 		currentTask.End = &now
 		updateTask(f, tasks, currentTask)
 	case "add":
-        if len(os.Args) < 4 {
-            log.Fatal(errors.New("not enough arguments"))
-        }
+		if len(os.Args) < 4 {
+			log.Fatal(errors.New("not enough arguments"))
+		}
 		addStart := os.Args[2]
 		addDuration := os.Args[3]
 		now := time.Now()
@@ -78,20 +79,20 @@ func main() {
 		startArr := strings.Split(addStart, ":")
 
 		if len(startArr) < 3 {
-            log.Fatal(errors.New("Not enough arguments"))
-        }
+			log.Fatal(errors.New("not enough arguments"))
+		}
 
-        hour, _ := strconv.Atoi(startArr[0])
+		hour, _ := strconv.Atoi(startArr[0])
 		minute, _ := strconv.Atoi(startArr[1])
 		sec, _ := strconv.Atoi(startArr[2])
 
 		startDate := time.Date(now.Year(), time.Month(12), now.Day(), hour, minute, sec, int(00), location)
 
-        d, _ := strconv.Atoi(addDuration)
-        
-        endDate := startDate.Add(time.Minute * time.Duration(d))
+		d, _ := strconv.Atoi(addDuration)
 
-        record := Task{Start: &startDate, End: &endDate, Status: done}
+		endDate := startDate.Add(time.Minute * time.Duration(d))
+
+		record := Task{Start: &startDate, End: &endDate, Status: done}
 		addManual(f, record)
 	case "show":
 		if currentTask == nil {
@@ -99,35 +100,35 @@ func main() {
 			os.Exit(0)
 		}
 		countTime(currentTask)
-    default:
-        fmt.Println("Usage: ")
-        fmt.Println("  timer-cli <command>")
-        fmt.Println("")
-        fmt.Println("Commands:") 
-        fmt.Println("  timer-cli start -- starts the task")
-        fmt.Println("  timer-cli end -- ends the task") 
-        fmt.Println("  timer-cli total -- total time during day")
-        fmt.Println("  timer-cli reset -- reset the whole file and adds the header to csv")
-        fmt.Println("  timer-cli add -- adds manual time")
-        fmt.Println("  timer-cli show -- shows the current active task's running time")
+	default:
+		fmt.Println("Usage: ")
+		fmt.Println("  timer-cli <command>")
+		fmt.Println("")
+		fmt.Println("Commands:")
+		fmt.Println("  timer-cli start -- starts the task")
+		fmt.Println("  timer-cli end -- ends the task")
+		fmt.Println("  timer-cli total -- total time during day")
+		fmt.Println("  timer-cli reset -- reset the whole file and adds the header to csv")
+		fmt.Println("  timer-cli add -- adds manual time")
+		fmt.Println("  timer-cli show -- shows the current active task's running time")
 	}
 }
 
 func total(tasks []Task) time.Duration {
-    var d time.Duration
-    day  := time.Now().Format("02")
-    for _, task := range tasks {
-        start := *task.Start
-        taskDay := start.Format("02")
-        if taskDay != day {
-            continue
-        }
-        end := *task.End
-        diff := end.Sub(start)
-        d += diff
-    }
-    return d
-} 
+	var d time.Duration
+	day := time.Now().Format("02")
+	for _, task := range tasks {
+		start := *task.Start
+		taskDay := start.Format("02")
+		if taskDay != day {
+			continue
+		}
+		end := *task.End
+		diff := end.Sub(start)
+		d += diff
+	}
+	return d
+}
 
 func resetData(f *os.File) error {
 	if err := f.Truncate(0); err != nil {
@@ -164,6 +165,7 @@ func countTime(task *Task) error {
 	return nil
 }
 
+// getCsv returns the file, which can be read and can be created if not exist
 func getCsv() (*os.File, error) {
 	var f *os.File
 	var err error
