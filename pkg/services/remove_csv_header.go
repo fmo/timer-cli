@@ -1,10 +1,13 @@
 package services
 
-import "errors"
-
-func RemoveCSVHeader(data [][]string) ([][]string, error) {
-	if len(data) < 1 {
-		return nil, errors.New("csv has no header")
+func RemoveCSVHeader(data [][]string) [][]string {
+	if data == nil {
+		return data
 	}
-	return data[1:], nil
+
+	if data[0][0] == "start" {
+		return data[1:]
+	}
+
+	return data
 }

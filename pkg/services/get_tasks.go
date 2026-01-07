@@ -14,10 +14,7 @@ import (
 func GetTasks(data [][]string) ([]models.Task, error) {
 	var tasks []models.Task
 
-	tasksArr, err := RemoveCSVHeader(data)
-	if err != nil {
-		return nil, err
-	}
+	tasksArr := RemoveCSVHeader(data)
 
 	for _, taskArr := range tasksArr {
 		if len(taskArr) != 3 {
@@ -30,11 +27,14 @@ func GetTasks(data [][]string) ([]models.Task, error) {
 		}
 		task.Start = start
 
-		end, err := time.Parse(time.RFC3339, taskArr[1])
-		if err != nil {
-			return nil, fmt.Errorf("parsing end time not possible: %w", err)
+		if taskArr[1] != "" {
+
+			end, err := time.Parse(time.RFC3339, taskArr[1])
+			if err != nil {
+				return nil, fmt.Errorf("parsing end time not possible: %w", err)
+			}
+			task.End = end
 		}
-		task.End = end
 		status := models.Status(taskArr[2])
 		if err := status.IsValid(); err != nil {
 			return nil, fmt.Errorf("cant assign status: %w", err)

@@ -11,11 +11,18 @@ import (
 
 func WriteTask(file *os.File, task models.Task) error {
 	start := task.Start.Format(time.RFC3339)
-	end := task.End.Format(time.RFC3339)
+	var end string
+	if task.End.IsZero() {
+		end = ""
+	} else {
+		end = task.End.Format(time.RFC3339)
+	}
+
 	writer := csv.NewWriter(file)
-	writer.Write([]string{start, end, string(task.Status)})
+	if err := writer.Write([]string{start, end, string(task.Status)}); err != nil {
+		return err
+	}
 	writer.Flush()
 
 	return nil
 }
-
