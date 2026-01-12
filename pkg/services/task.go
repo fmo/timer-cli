@@ -1,5 +1,4 @@
-// Package models for whole project wide models
-package models
+package services
 
 import (
 	"errors"
@@ -22,14 +21,25 @@ const (
 	Done    Status = "done"
 )
 
-// Task object keeps the task related data
 type Task struct {
+	Store  TaskStorer
 	Start  time.Time
 	End    time.Time
 	Status Status
 }
 
-func NewTask() Task {
-	now := time.Now()
-	return Task{Start: now, Status: Started}
+func NewTask(ts TaskStorer) *Task {
+	return &Task{Store: ts}
+}
+
+func (t *Task) Create() error {
+	t.Start = time.Now()
+	t.Status = Started
+	return t.Store.Save(*t)
+}
+
+func (t *Task) Complete() error {
+	t.Status = Done
+	t.End = time.Now()
+	return t.Store.Update(*t)
 }
