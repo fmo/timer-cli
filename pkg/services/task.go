@@ -41,5 +41,5 @@ func (t *Task) Create() error {
 func (t *Task) Complete() error {
 	t.Status = Done
 	t.End = time.Now()
-	return t.Store.Update(*t)
+	return t.Store.Update(t)
 }

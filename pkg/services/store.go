@@ -13,6 +13,6 @@ func (s *Store) Save(task Task) error {
 	return s.ts.Save(task)
 }
 
-func (s *Store) Update(task Task) error {
+func (s *Store) Update(task *Task) error {
 	return s.ts.Update(task)
 }

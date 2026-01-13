@@ -16,34 +16,37 @@ const (
 )
 
 func main() {
+	logger := log.New(os.Stdout, "logs: ", log.Lshortfile)
+
 	if len(os.Args) < 2 {
-		log.Fatal("need at least one argument")
+		logger.Fatal("need at least one argument")
 	}
 
 	file, err := os.OpenFile(taskFile, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-		log.Fatalf("cant open the file: %v", err)
+		logger.Fatalf("cant open the file: %v", err)
 	}
 
-	csvCodec, err := services.NewCSVCodec(file)
+	csvCodec, err := services.NewCSVCodec(file, logger)
 	if err != nil {
 		if errors.Is(err, services.ErrNoDataInCSV) {
-			log.Println("no data in csv")
+			logger.Println("no data in csv")
 		} else {
-			log.Fatalf("cant get the codec: %v", err)
+			logger.Fatalf("cant get the codec: %v", err)
 		}
 	}
 
 	data, err := csvCodec.Load()
 	if err != nil {
 		if errors.Is(err, services.ErrNoDataInCSV) {
-			log.Println("csv is empty")
+			logger.Println("csv is empty")
 		} else {
-			log.Fatalf("something is wrong while loading csv: %v", err)
+			logger.Fatalf("something is wrong while loading csv: %v", err)
 		}
 	}
+	logger.Printf("%s has data: %s\n", taskFile, data)
 
-	tasks, err := services.NewTasks(data)
+	tasks, err := services.NewTasks(data, logger)
 	if err != nil {
 		log.Fatalf("cant get the tasks object: %v", err)
 	}
@@ -54,7 +57,7 @@ func main() {
 	case "start":
 		task := services.NewTask(taskStorer)
 		if err := task.Create(); err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 		countTime(*task)
 	case "total":
@@ -65,11 +68,13 @@ func main() {
 		}
 	case "complete":
 		currentTask, err := tasks.GetCurrentTask()
+		logger.Printf("Current task is: %v", currentTask)
+		currentTask.Store = taskStorer
 		if err != nil {
-			log.Fatalf("there is no current task: %v", err)
+			logger.Fatalf("there is no current task: %v", err)
 		}
 		if err := currentTask.Complete(); err != nil {
-			log.Fatalf("cant complete the task: %v", err)
+			logger.Fatalf("cant complete the task: %v", err)
 		}
 	case "add":
 	case "show":
@@ -77,7 +82,7 @@ func main() {
 		if error != nil {
 			log.Fatal("there is no current task")
 		}
-		countTime(currentTask)
+		countTime(*currentTask)
 	case "help":
 		fmt.Println("Usage: ")
 		fmt.Println("  timer-cli <command>")
