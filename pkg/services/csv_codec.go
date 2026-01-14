@@ -66,20 +66,32 @@ func (c *CSVCodec) Save(task Task) error {
 func (c *CSVCodec) Update(task *Task) error {
 	data, err := c.Load()
 	if err != nil {
-		c.Logger.Printf("Cant load data: %v", err)
 		return err
 	}
 
-	for rowKey, row := range data {
-		c.Logger.Printf("row %d: %s, task: %v", rowKey, row, task)
-		start, err := time.Parse(time.RFC3339, row[0])
+	if err := c.ResetData(); err != nil {
+		return err
+	}
+
+	for _, row := range data {
+		taskFound, err := func() (bool, error) {
+			start, err := time.Parse(time.RFC3339, row[0])
+			if err != nil {
+				return false, fmt.Errorf("cant convert start time to time: %w", err)
+			}
+			return task.Start.Equal(start), nil
+		}()
 		if err != nil {
-			return fmt.Errorf("cant convert start time to time: %w", err)
+			return err
 		}
-		c.Logger.Printf("start in time obj: %v", start)
-		if task.Start.Equal(start) {
+
+		if taskFound {
 			c.Logger.Printf("found task to update")
+			c.Writer.Write([]string{row[0], task.End.Format(time.RFC3339), string(Done)})
+		} else {
+			c.Writer.Write([]string{row[0], row[1], row[2]})
 		}
+		c.Writer.Flush()
 	}
 
 	return nil
