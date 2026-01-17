@@ -27,16 +27,26 @@ func NewTasks(data [][]string, logger *log.Logger) (*Tasks, error) {
 func (t *Tasks) TotalDuration() time.Duration {
 	today := time.Now()
 	day := today.Format("02")
+
 	var total time.Duration
 	for _, task := range t.Items {
-		taskDay := task.Start.Format("02")
+		taskDay := task.StartTime.Format("02")
 		if taskDay == day && task.Status == Done {
-			total += task.End.Sub(task.Start)
+			total += task.EndTime.Sub(task.StartTime)
 		}
 
 	}
 
 	return total
+}
+
+func (t *Tasks) AllowNewTask() error {
+	for _, task := range t.Items {
+		if task.HasStarted() {
+			return errors.New("a task already running")
+		}
+	}
+	return nil
 }
 
 func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
@@ -53,7 +63,7 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing start time not possible: %w", err)
 		}
-		task.Start = start
+		task.StartTime = start
 
 		if taskArr[1] != "" {
 			t.Logger.Printf("task row's first column is: %v", taskArr[1])
@@ -61,7 +71,7 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 			if err != nil {
 				return nil, fmt.Errorf("parsing end time not possible: %w", err)
 			}
-			task.End = end
+			task.EndTime = end
 		}
 		status := Status(taskArr[2])
 		if err := status.IsValid(); err != nil {
@@ -71,6 +81,7 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 		t.Logger.Printf("task is %v", task)
 		tasks = append(tasks, task)
 	}
+
 	return tasks, nil
 }
 

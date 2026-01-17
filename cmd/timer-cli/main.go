@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -16,73 +15,69 @@ const (
 )
 
 func main() {
-	logger := log.New(os.Stdout, "logs: ", log.Lshortfile)
+	// Logger
+	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		log.Fatal("cant create log file")
+	}
+
+	logger := log.New(logFile, "logs: ", log.Lshortfile|log.LstdFlags)
 
 	if len(os.Args) < 2 {
 		logger.Fatal("need at least one argument")
 	}
 
+	// File for CSV
 	file, err := os.OpenFile(taskFile, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		logger.Fatalf("cant open the file: %v", err)
 	}
 
-	csvCodec, err := services.NewCSVCodec(file, logger)
+	// CSV Codec
+	persister, err := services.NewCSVCodec(file, logger)
 	if err != nil {
-		if errors.Is(err, services.ErrNoDataInCSV) {
-			logger.Println("no data in csv")
-		} else {
-			logger.Fatalf("cant get the codec: %v", err)
-		}
+		logger.Fatal(err)
 	}
 
-	data, err := csvCodec.Load()
-	if err != nil {
-		if errors.Is(err, services.ErrNoDataInCSV) {
-			logger.Println("csv is empty")
-		} else {
-			logger.Fatalf("something is wrong while loading csv: %v", err)
-		}
-	}
-	logger.Printf("%s has data: %s\n", taskFile, data)
+	// Storer
+	storer := services.NewStore(persister)
 
-	tasks, err := services.NewTasks(data, logger)
+	// Task Service
+	taskService, err := services.NewTaskService(storer, logger)
 	if err != nil {
-		log.Fatalf("cant get the tasks object: %v", err)
+		log.Fatal(err)
 	}
-
-	taskStorer := services.NewStore(csvCodec)
 
 	switch os.Args[1] {
 	case "start":
-		task := services.NewTask(taskStorer)
-		if err := task.Create(); err != nil {
+		task, err := taskService.Create()
+		if err != nil {
 			logger.Fatal(err)
 		}
-		countTime(*task)
+		countTime(task)
 	case "total":
-		fmt.Printf("Total time: %v\n", tasks.TotalDuration())
+		fmt.Printf("Total time: %v\n", taskService.TotalDuration())
 	case "reset":
-		if err := csvCodec.ResetData(); err != nil {
+		if err := taskService.ResetData(); err != nil {
 			log.Fatal(err)
 		}
 	case "complete":
-		currentTask, err := tasks.GetCurrentTask()
-		logger.Printf("Current task is: %v", currentTask)
-		currentTask.Store = taskStorer
-		if err != nil {
-			logger.Fatalf("there is no current task: %v", err)
-		}
-		if err := currentTask.Complete(); err != nil {
-			logger.Fatalf("cant complete the task: %v", err)
-		}
+		//currentTask, err := tasks.GetCurrentTask()
+		//logger.Printf("Current task is: %v", currentTask)
+		//currentTask.Store = taskStorer
+		//if err != nil {
+	//		logger.Fatalf("ther is no current task: %v", err)
+	//	}
+	//	if err := currentTask.Complete(); err != nil {
+	//		logger.Fatalf("cant complete the task: %v", err)
+	//	}
 	case "add":
 	case "show":
-		currentTask, error := tasks.GetCurrentTask()
+		currentTask, error := taskService.GetCurrentTask()
 		if error != nil {
-			log.Fatal("there is no current task")
+			log.Fatal(error)
 		}
-		countTime(*currentTask)
+		countTime(currentTask)
 	case "help":
 		fmt.Println("Usage: ")
 		fmt.Println("  timer-cli <command>")
@@ -97,14 +92,14 @@ func main() {
 	}
 }
 
-func countTime(task services.Task) error {
+func countTime(task *services.Task) error {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	var d time.Duration
 	for range ticker.C {
 		now := time.Now()
-		d = now.Sub(task.Start)
+		d = now.Sub(task.StartTime)
 		d = d.Truncate(time.Second)
 		fmt.Print("\033[H\033[2J")
 		fmt.Println(d.String())

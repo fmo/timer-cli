@@ -22,24 +22,33 @@ const (
 )
 
 type Task struct {
-	Store  TaskStorer
-	Start  time.Time
-	End    time.Time
-	Status Status
+	StartTime time.Time
+	EndTime   time.Time
+	Status    Status
 }
 
-func NewTask(ts TaskStorer) *Task {
-	return &Task{Store: ts}
+func NewTask() *Task {
+	return &Task{}
 }
 
-func (t *Task) Create() error {
-	t.Start = time.Now()
+func (t *Task) Start() {
+	t.StartTime = time.Now()
 	t.Status = Started
-	return t.Store.Save(*t)
 }
 
-func (t *Task) Complete() error {
+func (t *Task) HasStarted() bool {
+	return t.Status == Started
+}
+
+func (t *Task) Complete() {
 	t.Status = Done
-	t.End = time.Now()
-	return t.Store.Update(t)
+	t.EndTime = time.Now()
+}
+
+func (t *Task) IsSameTask(startTime string) bool {
+	start, err := time.Parse(time.RFC3339, startTime)
+	if err != nil {
+		return false
+	}
+	return t.StartTime.Equal(start)
 }

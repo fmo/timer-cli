@@ -1,18 +1,50 @@
 // Package services contains Store
 package services
 
+import "time"
+
+type Storer interface {
+	Save(*Task) error
+	Update(*Task) error
+	LoadData() ([][]string, error)
+	ResetData() error
+}
+
 type Store struct {
-	ts TaskStorer
+	p Persister
 }
 
-func NewStore(ts TaskStorer) *Store {
-	return &Store{ts: ts}
+func NewStore(persister Persister) *Store {
+	return &Store{p: persister}
 }
 
-func (s *Store) Save(task Task) error {
-	return s.ts.Save(task)
+func (s *Store) Save(task *Task) error {
+	startTime := task.StartTime.Format(time.RFC3339)
+	var endTime string
+	if task.EndTime.IsZero() {
+		endTime = ""
+	} else {
+		endTime = task.EndTime.Format(time.RFC3339)
+	}
+
+	row := []string{startTime, endTime, string(Started)}
+
+	return s.p.Save(row)
 }
 
 func (s *Store) Update(task *Task) error {
-	return s.ts.Update(task)
+	row := []string{
+		task.StartTime.Format(time.RFC3339),
+		task.EndTime.Format(time.RFC3339),
+		string(task.Status),
+	}
+	return s.p.Update(row)
+}
+
+func (s *Store) LoadData() ([][]string, error) {
+	return s.p.LoadData()
+}
+
+func (s *Store) ResetData() error {
+	return s.p.ResetData()
 }
