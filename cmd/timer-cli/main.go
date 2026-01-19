@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fmo/timer-cli/pkg/services"
 )
 
-const (
-	taskFile = "tasks.csv"
-	layout   = "02-01-2006 15:04:05 MST"
-)
+const taskFile = "tasks.csv"
 
 func main() {
 	// Logger
@@ -62,16 +61,30 @@ func main() {
 			log.Fatal(err)
 		}
 	case "complete":
-		//currentTask, err := tasks.GetCurrentTask()
-		//logger.Printf("Current task is: %v", currentTask)
-		//currentTask.Store = taskStorer
-		//if err != nil {
-	//		logger.Fatalf("ther is no current task: %v", err)
-	//	}
-	//	if err := currentTask.Complete(); err != nil {
-	//		logger.Fatalf("cant complete the task: %v", err)
-	//	}
+		if err := taskService.Complete(); err != nil {
+			log.Fatal(err)
+		}
 	case "add":
+		if len(os.Args) < 4 {
+			log.Fatal("need start time and duration for manual adding")
+		}
+
+		startTimeInString := os.Args[2]
+
+		startTime, err := stringTimeToTime(startTimeInString)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		addition := os.Args[3]
+		additionInt, err := strconv.Atoi(addition)
+		if err != nil {
+			log.Fatal("need addition time")
+		}
+
+		endTime := startTime.Add(time.Duration(additionInt) * time.Minute)
+
+		taskService.AddManual(startTime, endTime)
 	case "show":
 		currentTask, error := taskService.GetCurrentTask()
 		if error != nil {
@@ -90,6 +103,32 @@ func main() {
 		fmt.Println("  timer-cli add -- adds manual time")
 		fmt.Println("  timer-cli show -- shows the current active task's running time")
 	}
+}
+
+func stringTimeToTime(s string) (time.Time, error) {
+	timeArr := strings.Split(s, ":")
+	if len(timeArr) < 3 {
+		return time.Time{}, fmt.Errorf("need starting time format hh:mm::ss")
+	}
+
+	hh, mm, ss := timeArr[0], timeArr[1], timeArr[2]
+	hhInt, err := strconv.Atoi(hh)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("cant get the hour")
+	}
+	mmInt, err := strconv.Atoi(mm)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("cant get the minute")
+	}
+	ssInt, err := strconv.Atoi(ss)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("cant get the second")
+	}
+
+	now := time.Now()
+	t := time.Date(now.Year(), now.Month(), now.Day(), hhInt, mmInt, ssInt, 0, now.Location())
+
+	return t, nil
 }
 
 func countTime(task *services.Task) error {

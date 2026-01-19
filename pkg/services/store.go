@@ -27,7 +27,7 @@ func (s *Store) Save(task *Task) error {
 		endTime = task.EndTime.Format(time.RFC3339)
 	}
 
-	row := []string{startTime, endTime, string(Started)}
+	row := []string{startTime, endTime, string(task.Status)}
 
 	return s.p.Save(row)
 }

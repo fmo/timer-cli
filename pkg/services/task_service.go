@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"log"
 	"time"
 )
@@ -42,6 +43,27 @@ func (ts *TaskService) Create() (*Task, error) {
 	}
 
 	return task, nil
+}
+
+func (ts *TaskService) AddManual(startTime, endTime time.Time) error {
+	task := NewTask()
+	task.StartTime = startTime
+	task.Status = Done
+	task.EndTime = endTime
+	if err := ts.Storer.Save(task); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ts *TaskService) Complete() error {
+	currentTask, err := ts.GetCurrentTask()
+	if err != nil {
+		return fmt.Errorf("cant complete task due to: %w", err)
+	}
+	currentTask.Complete()
+
+	return ts.Storer.Update(currentTask)
 }
 
 func (ts *TaskService) ResetData() error {
