@@ -40,9 +40,22 @@ func (t *Task) HasStarted() bool {
 	return t.Status == Started
 }
 
+func (t *Task) HasDone() bool {
+	return t.Status == Done
+}
+
+func (t *Task) IsTodaysTask() bool {
+	today := time.Now()
+	return t.StartTime.Day() == today.Day()
+}
+
 func (t *Task) Complete() {
 	t.Status = Done
 	t.EndTime = time.Now()
+}
+
+func (t *Task) Duration() time.Duration {
+	return t.EndTime.Sub(t.StartTime)
 }
 
 func (t *Task) IsSameTask(startTime string) bool {

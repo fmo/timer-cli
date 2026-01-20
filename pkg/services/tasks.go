@@ -26,16 +26,12 @@ func NewTasks(data [][]string, logger logger.Logger) (*Tasks, error) {
 }
 
 func (t *Tasks) TotalDuration() time.Duration {
-	today := time.Now()
-	day := today.Format("02")
-
 	var total time.Duration
-	for _, task := range t.Items {
-		taskDay := task.StartTime.Format("02")
-		if taskDay == day && task.Status == Done {
-			total += task.EndTime.Sub(task.StartTime)
-		}
 
+	for _, task := range t.Items {
+		if task.IsTodaysTask() && task.HasDone() {
+			total += task.Duration()
+		}
 	}
 
 	return total
@@ -85,9 +81,9 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 
 func (t *Tasks) GetCurrentTask() (*Task, error) {
 	for _, task := range t.Items {
-		if task.Status == Started {
+		if task.HasStarted() {
 			return &task, nil
 		}
 	}
-	return &Task{}, errors.New("there is no started task")
+	return nil, errors.New("there is no started task")
 }
