@@ -3,16 +3,17 @@ package services
 import (
 	"errors"
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/fmo/timer-cli/pkg/logger"
 )
 
 type Tasks struct {
-	Logger *log.Logger
+	Logger logger.Logger
 	Items  []Task
 }
 
-func NewTasks(data [][]string, logger *log.Logger) (*Tasks, error) {
+func NewTasks(data [][]string, logger logger.Logger) (*Tasks, error) {
 	tasks := &Tasks{
 		Logger: logger,
 	}
@@ -56,7 +57,6 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 		if len(taskArr) != 3 {
 			return nil, errors.New("not matching column length")
 		}
-		t.Logger.Println(taskArr)
 		task := Task{}
 
 		start, err := time.Parse(time.RFC3339, taskArr[0])
@@ -66,7 +66,6 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 		task.StartTime = start
 
 		if taskArr[1] != "" {
-			t.Logger.Printf("task row's first column is: %v", taskArr[1])
 			end, err := time.Parse(time.RFC3339, taskArr[1])
 			if err != nil {
 				return nil, fmt.Errorf("parsing end time not possible: %w", err)
@@ -78,7 +77,6 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 			return nil, fmt.Errorf("cant assign status: %w", err)
 		}
 		task.Status = status
-		t.Logger.Printf("task is %v", task)
 		tasks = append(tasks, task)
 	}
 
