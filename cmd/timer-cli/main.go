@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fmo/timer-cli/pkg/logger"
 	"github.com/fmo/timer-cli/pkg/services"
 )
 
@@ -15,12 +16,10 @@ const taskFile = "tasks.csv"
 
 func main() {
 	// Logger
-	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_RDWR, 0644)
+	logger, err := logger.New()
 	if err != nil {
-		log.Fatal("cant create log file")
+		log.Fatal(err)
 	}
-
-	logger := log.New(logFile, "logs: ", log.Lshortfile|log.LstdFlags)
 
 	if len(os.Args) < 2 {
 		logger.Fatal("need at least one argument")
@@ -44,7 +43,7 @@ func main() {
 	// Task Service
 	taskService, err := services.NewTaskService(storer, logger)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	switch os.Args[1] {
@@ -58,15 +57,15 @@ func main() {
 		fmt.Printf("Total time: %v\n", taskService.TotalDuration())
 	case "reset":
 		if err := taskService.ResetData(); err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 	case "complete":
 		if err := taskService.Complete(); err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 	case "add":
 		if len(os.Args) < 4 {
-			log.Fatal("need start time and duration for manual adding")
+			logger.Fatal("need start time and duration for manual adding")
 		}
 
 		startTimeInString := os.Args[2]
@@ -88,7 +87,7 @@ func main() {
 	case "show":
 		currentTask, error := taskService.GetCurrentTask()
 		if error != nil {
-			log.Fatal(error)
+			logger.Fatal(error)
 		}
 		countTime(currentTask)
 	case "help":
