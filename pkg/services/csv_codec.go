@@ -2,8 +2,9 @@ package services
 
 import (
 	"encoding/csv"
-	"log"
 	"os"
+
+	"github.com/fmo/timer-cli/pkg/logger"
 )
 
 type Persister interface {
@@ -15,12 +16,12 @@ type Persister interface {
 
 type CSVCodec struct {
 	File   *os.File
-	Logger *log.Logger
+	Logger logger.Logger
 	Writer *csv.Writer
 	Reader *csv.Reader
 }
 
-func NewCSVCodec(f *os.File, logger *log.Logger) (*CSVCodec, error) {
+func NewCSVCodec(f *os.File, logger logger.Logger) (*CSVCodec, error) {
 	writer := csv.NewWriter(f)
 	reader := csv.NewReader(f)
 

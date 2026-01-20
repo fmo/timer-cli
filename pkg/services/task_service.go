@@ -2,17 +2,18 @@ package services
 
 import (
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/fmo/timer-cli/pkg/logger"
 )
 
 type TaskService struct {
 	Storer Storer
-	Logger *log.Logger
+	Logger logger.Logger
 	Tasks  *Tasks
 }
 
-func NewTaskService(s Storer, l *log.Logger) (*TaskService, error) {
+func NewTaskService(s Storer, l logger.Logger) (*TaskService, error) {
 	data, err := s.LoadData()
 	if err != nil {
 		return nil, err

@@ -18,7 +18,7 @@ func main() {
 	// Logger
 	logger, err := logger.New()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err, "err")
 	}
 
 	if len(os.Args) < 2 {
