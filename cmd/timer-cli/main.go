@@ -10,6 +10,8 @@ import (
 
 	"github.com/fmo/timer-cli/pkg/logger"
 	"github.com/fmo/timer-cli/pkg/services"
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 const taskFile = "tasks.csv"
@@ -131,16 +133,21 @@ func stringTimeToTime(s string) (time.Time, error) {
 }
 
 func countTime(task *services.Task) error {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	app := tview.NewApplication()
+	view := tview.NewBox().SetDrawFunc(func(screen tcell.Screen, x, y, width, hight int) (int, int, int, int) {
+		tview.Print(screen, time.Since(task.StartTime).Truncate(1*time.Second).String(), x, hight/4, width, tview.AlignCenter, tcell.ColorLime)
+		return 0, 0, 0, 0
+	})
 
-	var d time.Duration
-	for range ticker.C {
-		now := time.Now()
-		d = now.Sub(task.StartTime)
-		d = d.Truncate(time.Second)
-		fmt.Print("\033[H\033[2J")
-		fmt.Println(d.String())
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		for range ticker.C {
+			app.Draw()
+		}
+	}()
+
+	if err := app.SetRoot(view, true).Run(); err != nil {
+		return err
 	}
 
 	return nil
