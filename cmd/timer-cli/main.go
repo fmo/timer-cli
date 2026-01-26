@@ -72,7 +72,7 @@ func main() {
 
 		startTimeInString := os.Args[2]
 
-		startTime, err := stringTimeToTime(startTimeInString)
+		startTime, err := stringToTime(startTimeInString)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -93,20 +93,21 @@ func main() {
 		}
 		countTime(currentTask)
 	case "help":
-		fmt.Println("Usage: ")
-		fmt.Println("  timer-cli <command>")
-		fmt.Println("")
-		fmt.Println("Commands:")
-		fmt.Println("  timer-cli start -- starts the task")
-		fmt.Println("  timer-cli end -- ends the task")
-		fmt.Println("  timer-cli total -- total time during day")
-		fmt.Println("  timer-cli reset -- reset the whole file and adds the header to csv")
-		fmt.Println("  timer-cli add -- adds manual time")
-		fmt.Println("  timer-cli show -- shows the current active task's running time")
+		ui := services.NewUI()
+		f := func() {
+			task, err := taskService.Create()
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			countTime(task)
+		}
+		ui.AddMenuItem("start", "start the task", f)
+		ui.DrawLayout()
 	}
 }
 
-func stringTimeToTime(s string) (time.Time, error) {
+func stringToTime(s string) (time.Time, error) {
 	timeArr := strings.Split(s, ":")
 	if len(timeArr) < 3 {
 		return time.Time{}, fmt.Errorf("need starting time format hh:mm::ss")
