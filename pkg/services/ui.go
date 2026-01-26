@@ -31,6 +31,12 @@ func (ui *UI) SetDisplayText(text string) {
 	ui.display.SetText(text)
 }
 
+func (ui *UI) SetDynamicDisplayText(text string) {
+	ui.app.QueueUpdateDraw(func() {
+		ui.display.SetText(text)
+	})
+}
+
 func (ui *UI) DrawLayout() {
 	content := tview.NewFlex().
 		SetDirection(tview.FlexColumn).

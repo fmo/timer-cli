@@ -10,8 +10,6 @@ import (
 
 	"github.com/fmo/timer-cli/pkg/logger"
 	"github.com/fmo/timer-cli/pkg/services"
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 )
 
 const taskFile = "tasks.csv"
@@ -50,11 +48,11 @@ func main() {
 
 	switch os.Args[1] {
 	case "start":
-		task, err := taskService.Create()
+		_, err := taskService.Create()
 		if err != nil {
 			logger.Fatal(err)
 		}
-		countTime(task)
+		//countTime(task)
 	case "total":
 		fmt.Printf("Total time: %v\n", taskService.TotalDuration())
 	case "reset":
@@ -87,11 +85,11 @@ func main() {
 
 		taskService.AddManual(startTime, endTime)
 	case "show":
-		currentTask, error := taskService.GetCurrentTask()
+		_, error := taskService.GetCurrentTask()
 		if error != nil {
 			logger.Fatal(error)
 		}
-		countTime(currentTask)
+		//countTime(currentTask)
 	case "help":
 		ui := services.NewUI()
 		f := func() {
@@ -100,7 +98,9 @@ func main() {
 				ui.SetDisplayText(err.Error())
 				return
 			}
-			countTime(task)
+			go countTime(task, func(text string) {
+				ui.SetDynamicDisplayText(text)
+			})
 		}
 		ui.AddMenuItem("start", "start the task", f)
 		ui.DrawLayout()
@@ -133,23 +133,13 @@ func stringToTime(s string) (time.Time, error) {
 	return t, nil
 }
 
-func countTime(task *services.Task) error {
-	app := tview.NewApplication()
-	view := tview.NewBox().SetDrawFunc(func(screen tcell.Screen, x, y, width, hight int) (int, int, int, int) {
-		tview.Print(screen, time.Since(task.StartTime).Truncate(1*time.Second).String(), x, hight/4, width, tview.AlignCenter, tcell.ColorLime)
-		return 0, 0, 0, 0
-	})
-
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		for range ticker.C {
-			app.Draw()
-		}
-	}()
-
-	if err := app.SetRoot(view, true).Run(); err != nil {
-		return err
+func countTime(task *services.Task, update func(string)) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		elapsed := time.Since(task.StartTime).
+			Truncate(1 * time.Second).
+			String()
+		update(elapsed)
 	}
-
-	return nil
 }
