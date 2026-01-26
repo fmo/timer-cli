@@ -5,30 +5,37 @@ import (
 )
 
 type UI struct {
-	app       *tview.Application
-	menuItems *tview.List
+	app     *tview.Application
+	menu    *tview.List
+	display *tview.TextView
 }
 
 func NewUI() *UI {
 	app := tview.NewApplication()
-	menuItems := tview.NewList()
-	menuItems.SetBorder(true)
-	return &UI{app, menuItems}
+
+	menu := tview.NewList()
+	menu.SetBorder(true)
+
+	display := tview.NewTextView()
+	display.SetBorder(true)
+	display.SetText("right")
+
+	return &UI{app, menu, display}
 }
 
 func (ui *UI) AddMenuItem(label, desc string, fn func()) {
-	ui.menuItems.AddItem(label, desc, 0, fn)
+	ui.menu.AddItem(label, desc, 0, fn)
+}
+
+func (ui *UI) SetDisplayText(text string) {
+	ui.display.SetText(text)
 }
 
 func (ui *UI) DrawLayout() {
-	right := tview.NewTextView()
-	right.SetBorder(true)
-	right.SetText("right")
-
 	content := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
-		AddItem(ui.menuItems, 0, 1, true).
-		AddItem(right, 0, 1, false)
+		AddItem(ui.menu, 0, 1, true).
+		AddItem(ui.display, 0, 1, false)
 
 	centered := tview.NewFlex().
 		SetDirection(tview.FlexColumn).

@@ -97,7 +97,7 @@ func main() {
 		f := func() {
 			task, err := taskService.Create()
 			if err != nil {
-				log.Print(err)
+				ui.SetDisplayText(err.Error())
 				return
 			}
 			countTime(task)
