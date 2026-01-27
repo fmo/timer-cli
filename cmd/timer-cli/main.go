@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -10,11 +11,18 @@ import (
 
 	"github.com/fmo/timer-cli/pkg/logger"
 	"github.com/fmo/timer-cli/pkg/services"
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 )
 
 const taskFile = "tasks.csv"
+
+var cancelTimer context.CancelFunc
+
+func stopTimer() {
+	if cancelTimer != nil {
+		cancelTimer()
+		cancelTimer = nil
+	}
+}
 
 func main() {
 	// Logger
@@ -34,10 +42,7 @@ func main() {
 	}
 
 	// CSV Codec
-	persister, err := services.NewCSVCodec(file, logger)
-	if err != nil {
-		logger.Fatal(err)
-	}
+	persister := services.NewCSVCodec(file, logger)
 
 	// Storer
 	storer := services.NewStore(persister)
@@ -49,22 +54,6 @@ func main() {
 	}
 
 	switch os.Args[1] {
-	case "start":
-		task, err := taskService.Create()
-		if err != nil {
-			logger.Fatal(err)
-		}
-		countTime(task)
-	case "total":
-		fmt.Printf("Total time: %v\n", taskService.TotalDuration())
-	case "reset":
-		if err := taskService.ResetData(); err != nil {
-			logger.Fatal(err)
-		}
-	case "complete":
-		if err := taskService.Complete(); err != nil {
-			logger.Fatal(err)
-		}
 	case "add":
 		if len(os.Args) < 4 {
 			logger.Fatal("need start time and duration for manual adding")
@@ -72,7 +61,7 @@ func main() {
 
 		startTimeInString := os.Args[2]
 
-		startTime, err := stringTimeToTime(startTimeInString)
+		startTime, err := stringToTime(startTimeInString)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -86,27 +75,66 @@ func main() {
 		endTime := startTime.Add(time.Duration(additionInt) * time.Minute)
 
 		taskService.AddManual(startTime, endTime)
-	case "show":
-		currentTask, error := taskService.GetCurrentTask()
-		if error != nil {
-			logger.Fatal(error)
+	case "app":
+		ui := services.NewUI()
+		startFn := func() {
+			stopTimer()
+			task, err := taskService.Create()
+			if err != nil {
+				ui.SetDisplayText(err.Error())
+				return
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			cancelTimer = cancel
+			go countTime(ctx, task, func(text string) {
+				ui.SetDynamicDisplayText(text)
+			})
 		}
-		countTime(currentTask)
-	case "help":
-		fmt.Println("Usage: ")
-		fmt.Println("  timer-cli <command>")
-		fmt.Println("")
-		fmt.Println("Commands:")
-		fmt.Println("  timer-cli start -- starts the task")
-		fmt.Println("  timer-cli end -- ends the task")
-		fmt.Println("  timer-cli total -- total time during day")
-		fmt.Println("  timer-cli reset -- reset the whole file and adds the header to csv")
-		fmt.Println("  timer-cli add -- adds manual time")
-		fmt.Println("  timer-cli show -- shows the current active task's running time")
+		completeFn := func() {
+			stopTimer()
+			if err := taskService.Complete(); err != nil {
+				ui.SetDisplayText(err.Error())
+				return
+			}
+			ui.SetDisplayText("task completed")
+		}
+		showFn := func() {
+			stopTimer()
+			currentTask, err := taskService.GetCurrentTask()
+			if err != nil {
+				ui.SetDisplayText(err.Error())
+				return
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			cancelTimer = cancel
+			go countTime(ctx, currentTask, func(text string) {
+				ui.SetDynamicDisplayText(text)
+			})
+		}
+		totalFn := func() {
+			stopTimer()
+			totalDuration := taskService.TotalDuration()
+			totalDuration = totalDuration.Truncate(1 * time.Second)
+			ui.SetDisplayText(totalDuration.String())
+		}
+		resetFn := func() {
+			stopTimer()
+			if err := taskService.ResetData(); err != nil {
+				ui.SetDisplayText(err.Error())
+				return
+			}
+			ui.SetDisplayText("reset done")
+		}
+		ui.AddMenuItem("start", "start the task", startFn)
+		ui.AddMenuItem("complete", "complete the task", completeFn)
+		ui.AddMenuItem("show", "show running task", showFn)
+		ui.AddMenuItem("total", "show total duration", totalFn)
+		ui.AddMenuItem("reset", "reset the data", resetFn)
+		ui.DrawLayout()
 	}
 }
 
-func stringTimeToTime(s string) (time.Time, error) {
+func stringToTime(s string) (time.Time, error) {
 	timeArr := strings.Split(s, ":")
 	if len(timeArr) < 3 {
 		return time.Time{}, fmt.Errorf("need starting time format hh:mm::ss")
@@ -132,23 +160,20 @@ func stringTimeToTime(s string) (time.Time, error) {
 	return t, nil
 }
 
-func countTime(task *services.Task) error {
-	app := tview.NewApplication()
-	view := tview.NewBox().SetDrawFunc(func(screen tcell.Screen, x, y, width, hight int) (int, int, int, int) {
-		tview.Print(screen, time.Since(task.StartTime).Truncate(1*time.Second).String(), x, hight/4, width, tview.AlignCenter, tcell.ColorLime)
-		return 0, 0, 0, 0
-	})
+func countTime(ctx context.Context, task *services.Task, update func(string)) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		for range ticker.C {
-			app.Draw()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			elapsed := time.Since(task.StartTime).
+				Truncate(1 * time.Second).
+				String()
+			update(elapsed)
 		}
-	}()
-
-	if err := app.SetRoot(view, true).Run(); err != nil {
-		return err
 	}
 
-	return nil
 }

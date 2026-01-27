@@ -12,6 +12,7 @@ type Persister interface {
 	Update([]string) error
 	LoadData() ([][]string, error)
 	ResetData() error
+	CreateHeader() error
 }
 
 type CSVCodec struct {
@@ -21,29 +22,16 @@ type CSVCodec struct {
 	Reader *csv.Reader
 }
 
-func NewCSVCodec(f *os.File, logger logger.Logger) (*CSVCodec, error) {
+func NewCSVCodec(f *os.File, logger logger.Logger) *CSVCodec {
 	writer := csv.NewWriter(f)
 	reader := csv.NewReader(f)
 
-	codec := &CSVCodec{
+	return &CSVCodec{
 		File:   f,
 		Logger: logger,
 		Writer: writer,
 		Reader: reader,
 	}
-
-	// if the file is empty then put the header
-	data, err := codec.Load()
-	if err != nil {
-		return nil, err
-	}
-	if len(data) == 0 {
-		if err := codec.saveHeader(); err != nil {
-			return nil, err
-		}
-	}
-
-	return codec, nil
 }
 
 func (c *CSVCodec) saveHeader() error {
@@ -51,6 +39,19 @@ func (c *CSVCodec) saveHeader() error {
 		return err
 	}
 	c.Writer.Flush()
+	return nil
+}
+
+func (c *CSVCodec) CreateHeader() error {
+	data, err := c.Load()
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		if err := c.saveHeader(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
