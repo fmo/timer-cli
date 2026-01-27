@@ -27,7 +27,6 @@ func NewTasks(data [][]string, logger logger.Logger) (*Tasks, error) {
 
 func (t *Tasks) TotalDuration() time.Duration {
 	var total time.Duration
-
 	for _, task := range t.Items {
 		if task.IsTodaysTask() && task.HasDone() {
 			total += task.Duration()

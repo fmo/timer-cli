@@ -43,6 +43,8 @@ func (ts *TaskService) Create() (*Task, error) {
 		return nil, err
 	}
 
+	ts.Tasks.Items = append(ts.Tasks.Items, *task)
+
 	return task, nil
 }
 
@@ -64,11 +66,22 @@ func (ts *TaskService) Complete() error {
 	}
 	currentTask.Complete()
 
+	for i, v := range ts.Tasks.Items {
+		if v.StartTime.Equal(currentTask.StartTime) {
+			ts.Tasks.Items[i].Status = Done
+			ts.Tasks.Items[i].EndTime = currentTask.EndTime
+		}
+	}
+
 	return ts.Storer.Update(currentTask)
 }
 
 func (ts *TaskService) ResetData() error {
-	return ts.Storer.ResetData()
+	if err := ts.Storer.ResetData(); err != nil {
+		return err
+	}
+	ts.Tasks.Items = []Task{}
+	return nil
 }
 
 func (ts *TaskService) GetCurrentTask() (*Task, error) {

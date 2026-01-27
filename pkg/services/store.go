@@ -19,6 +19,7 @@ func NewStore(persister Persister) *Store {
 }
 
 func (s *Store) Save(task *Task) error {
+	s.p.CreateHeader()
 	startTime := task.StartTime.Format(time.RFC3339)
 	var endTime string
 	if task.EndTime.IsZero() {
@@ -42,9 +43,18 @@ func (s *Store) Update(task *Task) error {
 }
 
 func (s *Store) LoadData() ([][]string, error) {
+	if err := s.p.CreateHeader(); err != nil {
+		return nil, err
+	}
 	return s.p.LoadData()
 }
 
 func (s *Store) ResetData() error {
-	return s.p.ResetData()
+	if err := s.p.ResetData(); err != nil {
+		return err
+	}
+	if err := s.p.CreateHeader(); err != nil {
+		return err
+	}
+	return nil
 }

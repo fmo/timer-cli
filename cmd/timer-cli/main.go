@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +14,15 @@ import (
 )
 
 const taskFile = "tasks.csv"
+
+var cancelTimer context.CancelFunc
+
+func stopTimer() {
+	if cancelTimer != nil {
+		cancelTimer()
+		cancelTimer = nil
+	}
+}
 
 func main() {
 	// Logger
@@ -32,10 +42,7 @@ func main() {
 	}
 
 	// CSV Codec
-	persister, err := services.NewCSVCodec(file, logger)
-	if err != nil {
-		logger.Fatal(err)
-	}
+	persister := services.NewCSVCodec(file, logger)
 
 	// Storer
 	storer := services.NewStore(persister)
@@ -47,22 +54,6 @@ func main() {
 	}
 
 	switch os.Args[1] {
-	case "start":
-		_, err := taskService.Create()
-		if err != nil {
-			logger.Fatal(err)
-		}
-		//countTime(task)
-	case "total":
-		fmt.Printf("Total time: %v\n", taskService.TotalDuration())
-	case "reset":
-		if err := taskService.ResetData(); err != nil {
-			logger.Fatal(err)
-		}
-	case "complete":
-		if err := taskService.Complete(); err != nil {
-			logger.Fatal(err)
-		}
 	case "add":
 		if len(os.Args) < 4 {
 			logger.Fatal("need start time and duration for manual adding")
@@ -84,25 +75,61 @@ func main() {
 		endTime := startTime.Add(time.Duration(additionInt) * time.Minute)
 
 		taskService.AddManual(startTime, endTime)
-	case "show":
-		_, error := taskService.GetCurrentTask()
-		if error != nil {
-			logger.Fatal(error)
-		}
-		//countTime(currentTask)
-	case "help":
+	case "app":
 		ui := services.NewUI()
-		f := func() {
+		startFn := func() {
+			stopTimer()
 			task, err := taskService.Create()
 			if err != nil {
 				ui.SetDisplayText(err.Error())
 				return
 			}
-			go countTime(task, func(text string) {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancelTimer = cancel
+			go countTime(ctx, task, func(text string) {
 				ui.SetDynamicDisplayText(text)
 			})
 		}
-		ui.AddMenuItem("start", "start the task", f)
+		completeFn := func() {
+			stopTimer()
+			if err := taskService.Complete(); err != nil {
+				ui.SetDisplayText(err.Error())
+				return
+			}
+			ui.SetDisplayText("task completed")
+		}
+		showFn := func() {
+			stopTimer()
+			currentTask, err := taskService.GetCurrentTask()
+			if err != nil {
+				ui.SetDisplayText(err.Error())
+				return
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			cancelTimer = cancel
+			go countTime(ctx, currentTask, func(text string) {
+				ui.SetDynamicDisplayText(text)
+			})
+		}
+		totalFn := func() {
+			stopTimer()
+			totalDuration := taskService.TotalDuration()
+			totalDuration = totalDuration.Truncate(1 * time.Second)
+			ui.SetDisplayText(totalDuration.String())
+		}
+		resetFn := func() {
+			stopTimer()
+			if err := taskService.ResetData(); err != nil {
+				ui.SetDisplayText(err.Error())
+				return
+			}
+			ui.SetDisplayText("reset done")
+		}
+		ui.AddMenuItem("start", "start the task", startFn)
+		ui.AddMenuItem("complete", "complete the task", completeFn)
+		ui.AddMenuItem("show", "show running task", showFn)
+		ui.AddMenuItem("total", "show total duration", totalFn)
+		ui.AddMenuItem("reset", "reset the data", resetFn)
 		ui.DrawLayout()
 	}
 }
@@ -133,13 +160,20 @@ func stringToTime(s string) (time.Time, error) {
 	return t, nil
 }
 
-func countTime(task *services.Task, update func(string)) {
+func countTime(ctx context.Context, task *services.Task, update func(string)) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C {
-		elapsed := time.Since(task.StartTime).
-			Truncate(1 * time.Second).
-			String()
-		update(elapsed)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			elapsed := time.Since(task.StartTime).
+				Truncate(1 * time.Second).
+				String()
+			update(elapsed)
+		}
 	}
+
 }
