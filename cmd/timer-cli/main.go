@@ -125,11 +125,16 @@ func main() {
 			}
 			ui.SetDisplayText("reset done")
 		}
+		closeFn := func() {
+			ui.Stop()
+		}
 		ui.AddMenuItem("start", "start the task", startFn)
 		ui.AddMenuItem("complete", "complete the task", completeFn)
 		ui.AddMenuItem("show", "show running task", showFn)
 		ui.AddMenuItem("total", "show total duration", totalFn)
 		ui.AddMenuItem("reset", "reset the data", resetFn)
+		ui.AddMenuItem("close", "close the timer", closeFn)
+		showFn()
 		ui.DrawLayout()
 	}
 }
