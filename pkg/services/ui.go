@@ -1,19 +1,21 @@
 package services
 
 import (
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type UI struct {
 	app     *tview.Application
-	menu    *tview.List
+	menu    *tview.Flex
 	display *tview.TextView
 }
 
 func NewUI() *UI {
 	app := tview.NewApplication()
 
-	menu := tview.NewList()
+	menu := tview.NewFlex()
+	menu.SetDirection(tview.FlexRow)
 	menu.SetBorder(true)
 
 	display := tview.NewTextView()
@@ -24,7 +26,22 @@ func NewUI() *UI {
 }
 
 func (ui *UI) AddMenuItem(label, desc string, fn func()) {
-	ui.menu.AddItem(label, desc, 0, fn)
+	btn := tview.NewButton(label)
+	btn.SetSelectedFunc(fn)
+
+	btn.SetStyle(
+		tcell.StyleDefault.
+			Background(tcell.NewHexColor(0x1e3a8a)).
+			Foreground(tcell.NewHexColor(0xe5e7eb)),
+	)
+
+	btn.SetActivatedStyle(
+		tcell.StyleDefault.
+			Background(tcell.NewHexColor(0x3b82f6)).
+			Foreground(tcell.ColorWhite),
+	)
+
+	ui.menu.AddItem(btn, 3, 0, true)
 }
 
 func (ui *UI) SetDisplayText(text string) {
@@ -55,6 +72,7 @@ func (ui *UI) DrawLayout() {
 		AddItem(centered, 20, 0, false).
 		AddItem(nil, 0, 1, false)
 
+	ui.app.SetFocus(ui.menu)
 	ui.app.EnableMouse(true).SetRoot(root, true).Run()
 }
 
