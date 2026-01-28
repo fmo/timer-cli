@@ -66,13 +66,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		addition := os.Args[3]
-		additionInt, err := strconv.Atoi(addition)
+		duration, err := time.ParseDuration(os.Args[3])
 		if err != nil {
-			log.Fatal("need addition time")
+			log.Fatal(err)
 		}
 
-		endTime := startTime.Add(time.Duration(additionInt) * time.Minute)
+		endTime := startTime.Add(duration)
 
 		taskService.AddManual(startTime, endTime)
 	case "app":
