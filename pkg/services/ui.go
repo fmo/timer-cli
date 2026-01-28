@@ -18,7 +18,7 @@ func NewUI() *UI {
 
 	display := tview.NewTextView()
 	display.SetBorder(true)
-	display.SetText("right")
+	display.SetText("Loading Tasks...")
 
 	return &UI{app, menu, display}
 }
@@ -56,4 +56,8 @@ func (ui *UI) DrawLayout() {
 		AddItem(nil, 0, 1, false)
 
 	ui.app.EnableMouse(true).SetRoot(root, true).Run()
+}
+
+func (ui *UI) Stop() {
+	ui.app.Stop()
 }
