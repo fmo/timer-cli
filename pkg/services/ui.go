@@ -6,9 +6,12 @@ import (
 )
 
 type UI struct {
-	app     *tview.Application
-	menu    *tview.Flex
-	display *tview.TextView
+	app          *tview.Application
+	menu         *tview.Flex
+	display      *tview.TextView
+	displayPages *tview.Pages
+	form         *tview.Form
+	onSubmit     func(string, string)
 }
 
 func NewUI() *UI {
@@ -22,7 +25,49 @@ func NewUI() *UI {
 	display.SetBorder(true)
 	display.SetText("Loading Tasks...")
 
-	return &UI{app, menu, display}
+	ui :=
+		&UI{
+			app:     app,
+			menu:    menu,
+			display: display,
+		}
+
+	form := tview.NewForm()
+	form.AddInputField("start time", "hh:mm:ss", 10, nil, nil)
+	form.AddInputField("duration", "1h22m33s", 20, nil, nil)
+	form.SetBorder(true)
+	form.AddButton("Add Time", func() {
+		st := form.GetFormItemByLabel("start time").(*tview.InputField).GetText()
+		d := form.GetFormItemByLabel("duration").(*tview.InputField).GetText()
+
+		if ui.onSubmit != nil {
+			ui.onSubmit(st, d)
+		}
+		form.RemoveFormItem(0)
+		form.RemoveFormItem(0)
+		form.RemoveButton(0)
+		form.AddTextView("Status", "Saved successfully", 40, 1, true, false)
+	})
+
+	ui.form = form
+
+	ui.displayPages = tview.NewPages().
+		AddPage("textBase", display, true, true).
+		AddPage("form", form, true, false)
+
+	return ui
+}
+
+func (ui *UI) SubmitForm(fn func(string, string)) {
+	ui.onSubmit = fn
+}
+
+func (ui *UI) SwitchToForm() {
+	ui.displayPages.SwitchToPage("form")
+}
+
+func (ui *UI) SwitchToTextBase() {
+	ui.displayPages.SwitchToPage("textBase")
 }
 
 func (ui *UI) AddMenuItem(label, desc string, fn func()) {
@@ -58,7 +103,7 @@ func (ui *UI) DrawLayout() {
 	content := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
 		AddItem(ui.menu, 0, 1, true).
-		AddItem(ui.display, 0, 1, false)
+		AddItem(ui.displayPages, 0, 1, false)
 
 	centered := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
@@ -69,7 +114,7 @@ func (ui *UI) DrawLayout() {
 	root := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(nil, 0, 1, false).
-		AddItem(centered, 20, 0, false).
+		AddItem(centered, 23, 0, false).
 		AddItem(nil, 0, 1, false)
 
 	ui.app.SetFocus(ui.menu)

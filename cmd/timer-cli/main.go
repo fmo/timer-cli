@@ -54,26 +54,6 @@ func main() {
 	}
 
 	switch os.Args[1] {
-	case "add":
-		if len(os.Args) < 4 {
-			logger.Fatal("need start time and duration for manual adding")
-		}
-
-		startTimeInString := os.Args[2]
-
-		startTime, err := stringToTime(startTimeInString)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		duration, err := time.ParseDuration(os.Args[3])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		endTime := startTime.Add(duration)
-
-		taskService.AddManual(startTime, endTime)
 	case "app":
 		ui := services.NewUI()
 		startFn := func() {
@@ -111,6 +91,7 @@ func main() {
 			})
 		}
 		totalFn := func() {
+			ui.SwitchToTextBase()
 			stopTimer()
 			totalDuration := taskService.TotalDuration()
 			totalDuration = totalDuration.Truncate(1 * time.Second)
@@ -124,6 +105,23 @@ func main() {
 			}
 			ui.SetDisplayText("reset done")
 		}
+		manualFn := func() {
+			ui.SubmitForm(func(st, d string) {
+				startTime, err := stringToTime(st)
+				if err != nil {
+					logger.Fatal(err)
+				}
+				duration, err := time.ParseDuration(d)
+				if err != nil {
+					logger.Fatal(err)
+				}
+				endTime := startTime.Add(duration)
+				if err := taskService.AddManual(startTime, endTime); err != nil {
+					logger.Fatal(err)
+				}
+			})
+			ui.SwitchToForm()
+		}
 		closeFn := func() {
 			ui.Stop()
 		}
@@ -132,6 +130,7 @@ func main() {
 		ui.AddMenuItem("show", "show running task", showFn)
 		ui.AddMenuItem("total", "show total duration", totalFn)
 		ui.AddMenuItem("reset", "reset the data", resetFn)
+		ui.AddMenuItem("manual", "add manual task", manualFn)
 		ui.AddMenuItem("close", "close the timer", closeFn)
 		showFn()
 		ui.DrawLayout()
