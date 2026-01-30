@@ -12,6 +12,7 @@ type UI struct {
 	displayPages *tview.Pages
 	form         *tview.Form
 	onSubmit     func(string, string)
+	root         *tview.Flex
 }
 
 func NewUI() *UI {
@@ -25,12 +26,11 @@ func NewUI() *UI {
 	display.SetBorder(true)
 	display.SetText("Loading Tasks...")
 
-	ui :=
-		&UI{
-			app:     app,
-			menu:    menu,
-			display: display,
-		}
+	ui := &UI{
+		app:     app,
+		menu:    menu,
+		display: display,
+	}
 
 	form := tview.NewForm()
 	form.AddInputField("start time", "hh:mm:ss", 10, nil, nil)
@@ -54,6 +54,23 @@ func NewUI() *UI {
 	ui.displayPages = tview.NewPages().
 		AddPage("textBase", display, true, true).
 		AddPage("form", form, true, false)
+
+	content := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(ui.menu, 0, 1, true).
+		AddItem(ui.displayPages, 0, 1, false)
+
+	centered := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(content, 80, 0, false).
+		AddItem(nil, 0, 1, false)
+
+	ui.root = tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(centered, 23, 0, false).
+		AddItem(nil, 0, 1, false)
 
 	return ui
 }
@@ -99,26 +116,8 @@ func (ui *UI) SetDynamicDisplayText(text string) {
 	})
 }
 
-func (ui *UI) DrawLayout() {
-	content := tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(ui.menu, 0, 1, true).
-		AddItem(ui.displayPages, 0, 1, false)
-
-	centered := tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(nil, 0, 1, false).
-		AddItem(content, 80, 0, false).
-		AddItem(nil, 0, 1, false)
-
-	root := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(nil, 0, 1, false).
-		AddItem(centered, 23, 0, false).
-		AddItem(nil, 0, 1, false)
-
-	ui.app.SetFocus(ui.menu)
-	ui.app.EnableMouse(true).SetRoot(root, true).Run()
+func (ui *UI) Render() {
+	ui.app.EnableMouse(true).SetRoot(ui.root, true).Run()
 }
 
 func (ui *UI) Stop() {

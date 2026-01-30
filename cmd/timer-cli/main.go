@@ -49,7 +49,9 @@ func main() {
 		logger.Fatal(err)
 	}
 
+	// Initiate UI
 	ui := services.NewUI()
+
 	startFn := func() {
 		stopTimer()
 		task, err := taskService.Create()
@@ -119,6 +121,7 @@ func main() {
 	closeFn := func() {
 		ui.Stop()
 	}
+
 	ui.AddMenuItem("start", "start the task", startFn)
 	ui.AddMenuItem("complete", "complete the task", completeFn)
 	ui.AddMenuItem("show", "show running task", showFn)
@@ -130,7 +133,7 @@ func main() {
 	// Default show the running task
 	showFn()
 
-	ui.DrawLayout()
+	ui.Render()
 }
 
 func stringToTime(s string) (time.Time, error) {
