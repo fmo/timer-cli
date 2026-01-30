@@ -31,10 +31,6 @@ func main() {
 		log.Fatal(err, "err")
 	}
 
-	if len(os.Args) < 2 {
-		logger.Fatal("need at least one argument")
-	}
-
 	// File for CSV
 	file, err := os.OpenFile(taskFile, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
