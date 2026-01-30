@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -12,8 +11,6 @@ import (
 	"github.com/fmo/timer-cli/pkg/logger"
 	"github.com/fmo/timer-cli/pkg/services"
 )
-
-const taskFile = "tasks.csv"
 
 var cancelTimer context.CancelFunc
 
@@ -31,14 +28,11 @@ func main() {
 		log.Fatal(err, "err")
 	}
 
-	// File for CSV
-	file, err := os.OpenFile(taskFile, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		logger.Fatalf("cant open the file: %v", err)
-	}
-
 	// CSV Codec
-	persister := services.NewCSVCodec(file, logger)
+	persister, err := services.NewCSVCodec(logger)
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	// Storer
 	storer := services.NewStore(persister)
