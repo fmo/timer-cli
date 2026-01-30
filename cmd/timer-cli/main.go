@@ -53,89 +53,88 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	switch os.Args[1] {
-	case "add":
-		if len(os.Args) < 4 {
-			logger.Fatal("need start time and duration for manual adding")
-		}
-
-		startTimeInString := os.Args[2]
-
-		startTime, err := stringToTime(startTimeInString)
+	ui := services.NewUI()
+	startFn := func() {
+		stopTimer()
+		task, err := taskService.Create()
 		if err != nil {
-			log.Fatal(err)
+			ui.SetDisplayText(err.Error())
+			return
 		}
-
-		duration, err := time.ParseDuration(os.Args[3])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		endTime := startTime.Add(duration)
-
-		taskService.AddManual(startTime, endTime)
-	case "app":
-		ui := services.NewUI()
-		startFn := func() {
-			stopTimer()
-			task, err := taskService.Create()
-			if err != nil {
-				ui.SetDisplayText(err.Error())
-				return
-			}
-			ctx, cancel := context.WithCancel(context.Background())
-			cancelTimer = cancel
-			go countTime(ctx, task, func(text string) {
-				ui.SetDynamicDisplayText(text)
-			})
-		}
-		completeFn := func() {
-			stopTimer()
-			if err := taskService.Complete(); err != nil {
-				ui.SetDisplayText(err.Error())
-				return
-			}
-			ui.SetDisplayText("task completed")
-		}
-		showFn := func() {
-			stopTimer()
-			currentTask, err := taskService.GetCurrentTask()
-			if err != nil {
-				ui.SetDisplayText(err.Error())
-				return
-			}
-			ctx, cancel := context.WithCancel(context.Background())
-			cancelTimer = cancel
-			go countTime(ctx, currentTask, func(text string) {
-				ui.SetDynamicDisplayText(text)
-			})
-		}
-		totalFn := func() {
-			stopTimer()
-			totalDuration := taskService.TotalDuration()
-			totalDuration = totalDuration.Truncate(1 * time.Second)
-			ui.SetDisplayText(totalDuration.String())
-		}
-		resetFn := func() {
-			stopTimer()
-			if err := taskService.ResetData(); err != nil {
-				ui.SetDisplayText(err.Error())
-				return
-			}
-			ui.SetDisplayText("reset done")
-		}
-		closeFn := func() {
-			ui.Stop()
-		}
-		ui.AddMenuItem("start", "start the task", startFn)
-		ui.AddMenuItem("complete", "complete the task", completeFn)
-		ui.AddMenuItem("show", "show running task", showFn)
-		ui.AddMenuItem("total", "show total duration", totalFn)
-		ui.AddMenuItem("reset", "reset the data", resetFn)
-		ui.AddMenuItem("close", "close the timer", closeFn)
-		showFn()
-		ui.DrawLayout()
+		ctx, cancel := context.WithCancel(context.Background())
+		cancelTimer = cancel
+		go countTime(ctx, task, func(text string) {
+			ui.SetDynamicDisplayText(text)
+		})
 	}
+	completeFn := func() {
+		stopTimer()
+		if err := taskService.Complete(); err != nil {
+			ui.SetDisplayText(err.Error())
+			return
+		}
+		ui.SetDisplayText("task completed")
+	}
+	showFn := func() {
+		stopTimer()
+		currentTask, err := taskService.GetCurrentTask()
+		if err != nil {
+			ui.SetDisplayText(err.Error())
+			return
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancelTimer = cancel
+		go countTime(ctx, currentTask, func(text string) {
+			ui.SetDynamicDisplayText(text)
+		})
+	}
+	totalFn := func() {
+		ui.SwitchToTextBase()
+		stopTimer()
+		totalDuration := taskService.TotalDuration()
+		totalDuration = totalDuration.Truncate(1 * time.Second)
+		ui.SetDisplayText(totalDuration.String())
+	}
+	resetFn := func() {
+		stopTimer()
+		if err := taskService.ResetData(); err != nil {
+			ui.SetDisplayText(err.Error())
+			return
+		}
+		ui.SetDisplayText("reset done")
+	}
+	manualFn := func() {
+		ui.SubmitForm(func(st, d string) {
+			startTime, err := stringToTime(st)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			duration, err := time.ParseDuration(d)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			endTime := startTime.Add(duration)
+			if err := taskService.AddManual(startTime, endTime); err != nil {
+				logger.Fatal(err)
+			}
+		})
+		ui.SwitchToForm()
+	}
+	closeFn := func() {
+		ui.Stop()
+	}
+	ui.AddMenuItem("start", "start the task", startFn)
+	ui.AddMenuItem("complete", "complete the task", completeFn)
+	ui.AddMenuItem("show", "show running task", showFn)
+	ui.AddMenuItem("total", "show total duration", totalFn)
+	ui.AddMenuItem("reset", "reset the data", resetFn)
+	ui.AddMenuItem("manual", "add manual task", manualFn)
+	ui.AddMenuItem("close", "close the timer", closeFn)
+
+	// Default show the running task
+	showFn()
+
+	ui.DrawLayout()
 }
 
 func stringToTime(s string) (time.Time, error) {
