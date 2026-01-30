@@ -56,6 +56,7 @@ func (ts *TaskService) AddManual(startTime, endTime time.Time) error {
 	if err := ts.Storer.Save(task); err != nil {
 		return err
 	}
+	ts.Tasks.Items = append(ts.Tasks.Items, *task)
 	return nil
 }
 

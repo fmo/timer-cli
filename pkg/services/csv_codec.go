@@ -7,6 +7,10 @@ import (
 	"github.com/fmo/timer-cli/pkg/logger"
 )
 
+const taskFile = "tasks.csv"
+
+var header = []string{"start", "end", "status"}
+
 type Persister interface {
 	Save([]string) error
 	Update([]string) error
@@ -22,7 +26,12 @@ type CSVCodec struct {
 	Reader *csv.Reader
 }
 
-func NewCSVCodec(f *os.File, logger logger.Logger) *CSVCodec {
+func NewCSVCodec(logger logger.Logger) (*CSVCodec, error) {
+	f, err := os.OpenFile(taskFile, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return nil, err
+	}
+
 	writer := csv.NewWriter(f)
 	reader := csv.NewReader(f)
 
@@ -31,30 +40,26 @@ func NewCSVCodec(f *os.File, logger logger.Logger) *CSVCodec {
 		Logger: logger,
 		Writer: writer,
 		Reader: reader,
-	}
+	}, nil
 }
 
-func (c *CSVCodec) saveHeader() error {
-	if err := c.Writer.Write([]string{"start", "end", "status"}); err != nil {
-		return err
-	}
-	c.Writer.Flush()
-	return nil
-}
-
+// CreateHeader creates header if file has no data. If there is data, this does not
+// check if its a actual header or not.
 func (c *CSVCodec) CreateHeader() error {
 	data, err := c.Load()
 	if err != nil {
 		return err
 	}
 	if len(data) == 0 {
-		if err := c.saveHeader(); err != nil {
+		if err := c.Writer.Write(header); err != nil {
 			return err
 		}
+		c.Writer.Flush()
 	}
 	return nil
 }
 
+// Save new row to the csv
 func (c *CSVCodec) Save(row []string) error {
 	if err := c.Writer.Write(row); err != nil {
 		return err
@@ -64,6 +69,7 @@ func (c *CSVCodec) Save(row []string) error {
 	return nil
 }
 
+// Update rewrites whole tasks list with the new record
 func (c *CSVCodec) Update(rowToUpdate []string) error {
 	data, err := c.LoadData()
 	if err != nil {
@@ -74,7 +80,7 @@ func (c *CSVCodec) Update(rowToUpdate []string) error {
 		return err
 	}
 
-	if err := c.saveHeader(); err != nil {
+	if err := c.CreateHeader(); err != nil {
 		return err
 	}
 
@@ -104,10 +110,11 @@ func (c *CSVCodec) LoadData() ([][]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return data[1:], nil
 }
 
-// ResetData allows reset data, NewCodec creates header if it does not there
+// ResetData allows reset data
 func (c *CSVCodec) ResetData() error {
 	if err := c.File.Truncate(0); err != nil {
 		return err
