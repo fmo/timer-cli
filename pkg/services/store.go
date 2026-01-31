@@ -46,7 +46,13 @@ func (s *Store) LoadData() ([][]string, error) {
 	if err := s.p.CreateHeader(); err != nil {
 		return nil, err
 	}
-	return s.p.LoadData()
+
+	data, err := s.p.LoadData()
+	if err != nil {
+		return nil, err
+	}
+
+	return data[1:], nil
 }
 
 func (s *Store) ResetData() error {
