@@ -19,6 +19,9 @@ func NewTaskService(s Storer, l logger.Logger) (*TaskService, error) {
 		return nil, err
 	}
 
+	// remove header
+	data = data[1:]
+
 	tasks, err := NewTasks(data, l)
 	if err != nil {
 		return nil, err
