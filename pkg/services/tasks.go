@@ -9,25 +9,43 @@ import (
 )
 
 type Tasks struct {
-	Logger logger.Logger
-	Items  []Task
+	logger logger.Logger
+	items  []Task
 }
 
 func NewTasks(data [][]string, logger logger.Logger) (*Tasks, error) {
-	tasks := &Tasks{
-		Logger: logger,
-	}
-	items, err := tasks.GetAll(data)
+	tasks := &Tasks{logger: logger}
+
+	items, err := tasks.getAll(data)
 	if err != nil {
 		return nil, err
 	}
-	tasks.Items = items
+
+	tasks.items = items
+
 	return tasks, nil
+}
+
+func (t *Tasks) AddTask(task Task) {
+	t.items = append(t.items, task)
+}
+
+func (t *Tasks) UpdateTask(task Task) {
+	for i, v := range t.items {
+		if v.StartTime.Equal(task.StartTime) {
+			t.items[i].Status = Done
+			t.items[i].EndTime = task.EndTime
+		}
+	}
+}
+
+func (t *Tasks) RemoveAll() {
+	t.items = []Task{}
 }
 
 func (t *Tasks) TotalDuration() time.Duration {
 	var total time.Duration
-	for _, task := range t.Items {
+	for _, task := range t.items {
 		if task.IsTodaysTask() && task.HasDone() {
 			total += task.Duration()
 		}
@@ -37,7 +55,7 @@ func (t *Tasks) TotalDuration() time.Duration {
 }
 
 func (t *Tasks) AllowNewTask() error {
-	for _, task := range t.Items {
+	for _, task := range t.items {
 		if task.HasStarted() {
 			return errors.New("a task already running")
 		}
@@ -45,7 +63,7 @@ func (t *Tasks) AllowNewTask() error {
 	return nil
 }
 
-func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
+func (t *Tasks) getAll(tasksArr [][]string) ([]Task, error) {
 	var tasks []Task
 
 	for _, taskArr := range tasksArr {
@@ -79,7 +97,7 @@ func (t *Tasks) GetAll(tasksArr [][]string) ([]Task, error) {
 }
 
 func (t *Tasks) GetCurrentTask() (*Task, error) {
-	for _, task := range t.Items {
+	for _, task := range t.items {
 		if task.HasStarted() {
 			return &task, nil
 		}
