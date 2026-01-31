@@ -19,8 +19,10 @@ func NewTaskService(s Storer, l logger.Logger) (*TaskService, error) {
 		return nil, err
 	}
 
-	// remove header
-	data = data[1:]
+	if len(data) > 1 {
+		// remove header
+		data = data[1:]
+	}
 
 	tasks, err := NewTasks(data, l)
 	if err != nil {
@@ -46,7 +48,7 @@ func (ts *TaskService) Create() (*Task, error) {
 		return nil, err
 	}
 
-	ts.Tasks.Items = append(ts.Tasks.Items, *task)
+	ts.Tasks.AddTask(*task)
 
 	return task, nil
 }
@@ -56,10 +58,13 @@ func (ts *TaskService) AddManual(startTime, endTime time.Time) error {
 	task.StartTime = startTime
 	task.Status = Done
 	task.EndTime = endTime
+
 	if err := ts.Storer.Save(task); err != nil {
 		return err
 	}
-	ts.Tasks.Items = append(ts.Tasks.Items, *task)
+
+	ts.Tasks.AddTask(*task)
+
 	return nil
 }
 
@@ -68,14 +73,10 @@ func (ts *TaskService) Complete() error {
 	if err != nil {
 		return fmt.Errorf("cant complete task due to: %w", err)
 	}
+
 	currentTask.Complete()
 
-	for i, v := range ts.Tasks.Items {
-		if v.StartTime.Equal(currentTask.StartTime) {
-			ts.Tasks.Items[i].Status = Done
-			ts.Tasks.Items[i].EndTime = currentTask.EndTime
-		}
-	}
+	ts.Tasks.UpdateTask(*currentTask)
 
 	return ts.Storer.Update(currentTask)
 }
@@ -84,7 +85,9 @@ func (ts *TaskService) ResetData() error {
 	if err := ts.Storer.ResetData(); err != nil {
 		return err
 	}
-	ts.Tasks.Items = []Task{}
+
+	ts.Tasks.RemoveAll()
+
 	return nil
 }
 
