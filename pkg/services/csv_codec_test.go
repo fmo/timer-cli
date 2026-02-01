@@ -8,7 +8,7 @@ import (
 	"github.com/fmo/timer-cli/pkg/services"
 )
 
-func newTestCodec(t *testing.T) services.Persister {
+func newTestCodec() services.Persister {
 	logger, err := logger.New()
 	if err != nil {
 		log.Fatal("cant initiate test due to logger setup")
@@ -19,36 +19,13 @@ func newTestCodec(t *testing.T) services.Persister {
 		log.Fatal("cant initiate csv codec")
 	}
 
-	t.Cleanup(func() {
-		_ = codec.ResetData()
-	})
+	codec.ResetData()
 
 	return codec
 }
 
-func TestCreateHeader(t *testing.T) {
-	codec := newTestCodec(t)
-
-	if err := codec.CreateHeader(); err != nil {
-		t.Error("creating header unexpectedly failed")
-	}
-
-	data, err := codec.LoadData()
-	if err != nil {
-		t.Error("loading data failed")
-	}
-
-	if len(data) != 1 {
-		t.Error("should have only header record")
-	}
-
-	if data[0][0] != "start" || data[0][1] != "end" || data[0][2] != "status" {
-		t.Error("header has not have expected data")
-	}
-}
-
 func TestSave(t *testing.T) {
-	codec := newTestCodec(t)
+	codec := newTestCodec()
 
 	if err := codec.Save([]string{"saves", "any", "data"}); err != nil {
 		t.Error("cant save")
