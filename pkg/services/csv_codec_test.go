@@ -8,7 +8,7 @@ import (
 	"github.com/fmo/timer-cli/pkg/services"
 )
 
-func newTestCodec(t *testing.T) services.Persister {
+func newTestCodec() services.Persister {
 	logger, err := logger.New()
 	if err != nil {
 		log.Fatal("cant initiate test due to logger setup")
@@ -19,36 +19,13 @@ func newTestCodec(t *testing.T) services.Persister {
 		log.Fatal("cant initiate csv codec")
 	}
 
-	t.Cleanup(func() {
-		_ = codec.ResetData()
-	})
+	codec.ResetData()
 
 	return codec
 }
 
-func TestCreateHeader(t *testing.T) {
-	codec := newTestCodec(t)
-
-	if err := codec.CreateHeader(); err != nil {
-		t.Error("creating header unexpectedly failed")
-	}
-
-	data, err := codec.LoadData()
-	if err != nil {
-		t.Error("loading data failed")
-	}
-
-	if len(data) != 1 {
-		t.Error("should have only header record")
-	}
-
-	if data[0][0] != "start" || data[0][1] != "end" || data[0][2] != "status" {
-		t.Error("header has not have expected data")
-	}
-}
-
 func TestSave(t *testing.T) {
-	codec := newTestCodec(t)
+	codec := newTestCodec()
 
 	if err := codec.Save([]string{"saves", "any", "data"}); err != nil {
 		t.Error("cant save")
@@ -61,5 +38,42 @@ func TestSave(t *testing.T) {
 
 	if len(data) != 1 {
 		t.Errorf("expected %d row, got %d row", 1, len(data))
+	}
+}
+
+func TestLoadDataFormEmptyFile(t *testing.T) {
+	codec := newTestCodec()
+
+	data, err := codec.LoadData()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if len(data) != 0 {
+		t.Errorf("data should not be in the file, got: %d", len(data))
+	}
+}
+
+func TestLoadDataWithData(t *testing.T) {
+	codec := newTestCodec()
+
+	data := [][]string{
+		{"some data", "some more data", "some even more data"},
+		{"some data2", "some more data2", "some even more data2"},
+	}
+
+	for _, d := range data {
+		if err := codec.Save(d); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	}
+
+	loadData, err := codec.LoadData()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if len(loadData) != 2 {
+		t.Errorf("expected: %d, got: %d", 2, len(loadData))
 	}
 }
