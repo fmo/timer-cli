@@ -43,7 +43,7 @@ func (ts *TaskService) Create() (*Task, error) {
 		return nil, err
 	}
 
-	ts.Tasks.AddTask(*task)
+	ts.Tasks.AddTask(task)
 
 	return task, nil
 }
@@ -58,7 +58,7 @@ func (ts *TaskService) AddManual(startTime, endTime time.Time) error {
 		return err
 	}
 
-	ts.Tasks.AddTask(*task)
+	ts.Tasks.AddTask(task)
 
 	return nil
 }
@@ -66,12 +66,12 @@ func (ts *TaskService) AddManual(startTime, endTime time.Time) error {
 func (ts *TaskService) Complete() error {
 	currentTask, err := ts.GetCurrentTask()
 	if err != nil {
-		return fmt.Errorf("cant complete task due to: %w", err)
+		return fmt.Errorf("cant complete task due to: %v", err)
 	}
 
 	currentTask.Complete()
 
-	ts.Tasks.UpdateTask(*currentTask)
+	ts.Tasks.UpdateTask(currentTask)
 
 	return ts.Storer.Update(currentTask)
 }
