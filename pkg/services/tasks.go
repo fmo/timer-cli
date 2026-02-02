@@ -10,7 +10,7 @@ import (
 
 type Tasks struct {
 	logger logger.Logger
-	items  []Task
+	items  []*Task
 }
 
 func NewTasks(data [][]string, logger logger.Logger) (*Tasks, error) {
@@ -26,11 +26,11 @@ func NewTasks(data [][]string, logger logger.Logger) (*Tasks, error) {
 	return tasks, nil
 }
 
-func (t *Tasks) AddTask(task Task) {
+func (t *Tasks) AddTask(task *Task) {
 	t.items = append(t.items, task)
 }
 
-func (t *Tasks) UpdateTask(task Task) {
+func (t *Tasks) UpdateTask(task *Task) {
 	for i, v := range t.items {
 		if v.StartTime.Equal(task.StartTime) {
 			t.items[i].Status = Done
@@ -40,7 +40,7 @@ func (t *Tasks) UpdateTask(task Task) {
 }
 
 func (t *Tasks) RemoveAll() {
-	t.items = []Task{}
+	t.items = []*Task{}
 }
 
 func (t *Tasks) TotalDuration() time.Duration {
@@ -63,14 +63,14 @@ func (t *Tasks) AllowNewTask() error {
 	return nil
 }
 
-func (t *Tasks) getAll(tasksArr [][]string) ([]Task, error) {
-	var tasks []Task
+func (t *Tasks) getAll(tasksArr [][]string) ([]*Task, error) {
+	var tasks []*Task
 
 	for _, taskArr := range tasksArr {
 		if len(taskArr) != 3 {
 			return nil, errors.New("not matching column length")
 		}
-		task := Task{}
+		task := &Task{}
 
 		start, err := time.Parse(time.RFC3339, taskArr[0])
 		if err != nil {
@@ -99,7 +99,7 @@ func (t *Tasks) getAll(tasksArr [][]string) ([]Task, error) {
 func (t *Tasks) GetCurrentTask() (*Task, error) {
 	for _, task := range t.items {
 		if task.HasStarted() {
-			return &task, nil
+			return task, nil
 		}
 	}
 	return nil, errors.New("there is no started task")
