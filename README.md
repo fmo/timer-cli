@@ -1,3 +1,9 @@
+## Single-task, single-user task manager
+
+This tool is based on how I personally track time. Most existing time-tracking tools feel too opinionated and come with many extras I don’t need. I also don’t like Pomodoro-style workflows.
+
+When I’m done with what I’m working on, I want to stop the task immediately. Fixed time frames don’t work well for me, especially with frequent context switching.
+
 ## Install 
 
 ### macOS (prebuild binary)
