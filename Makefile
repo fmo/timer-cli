@@ -1,3 +1,6 @@
+build:
+	go build -o timer-cli cmd/timer-cli/main.go
+
 test:
 	go test ./... -coverprofile=c.out
 

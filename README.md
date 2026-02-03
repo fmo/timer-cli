@@ -1,3 +1,24 @@
+## Install 
+
+### macOS (prebuild binary)
+
+Download the macOS binary from the release page.
+
+### Go Install
+
+go install github.com/fmo/cmd/timer-cli@v1.x.y
+
+### Other platforms
+
+Requires Go installed.
+
+```
+git clone git@github.com:fmo/timer-cli.git
+cd timer-cli
+make build
+./timer-cli
+```
+
 ## Features
 
 * Add, stop, show time for the running task.
