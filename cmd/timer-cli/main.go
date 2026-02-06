@@ -4,20 +4,205 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
-	"strings"
+	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/fmo/timer-cli/pkg/logger"
 	"github.com/fmo/timer-cli/pkg/services"
 )
 
-var cancelTimer context.CancelFunc
+type tickMsg string
 
-func stopTimer() {
-	if cancelTimer != nil {
-		cancelTimer()
-		cancelTimer = nil
+type currentTaskMsg struct {
+	isRunning bool
+	total     string
+}
+
+var docStyle = lipgloss.NewStyle().MarginTop(20).MarginLeft(56)
+
+type item struct {
+	title, desc string
+}
+
+func (i item) Title() string       { return i.title }
+func (i item) Description() string { return i.desc }
+func (i item) FilterValue() string { return i.title }
+
+type model struct {
+	list   list.Model
+	width  int
+	height int
+
+	taskService *services.TaskService
+
+	timerCtx    context.Context
+	cancelTimer context.CancelFunc
+	elapsed     string
+	total       string
+	isRunning   bool
+}
+
+func (m model) Init() tea.Cmd {
+	return isTaskRunning(m.taskService)
+}
+
+func (m *model) ensureTimer() context.Context {
+	if m.timerCtx == nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		m.timerCtx = ctx
+		m.cancelTimer = cancel
+	}
+	return m.timerCtx
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if it, ok := m.list.SelectedItem().(item); ok {
+				if it.title == "Start" {
+					var task *services.Task
+					var err error
+
+					if m.isRunning {
+						task, err = m.taskService.GetCurrentTask()
+						if err != nil {
+							m.elapsed = err.Error()
+						}
+					} else {
+						task, err = m.taskService.Create()
+						if err != nil {
+							m.elapsed = err.Error()
+							return m, nil
+						}
+						m.isRunning = true
+					}
+
+					ctx := m.ensureTimer()
+
+					return m, countTime(ctx, task)
+				}
+				if it.title == "Complete" {
+					if m.cancelTimer != nil {
+						m.cancelTimer()
+					}
+
+					m.timerCtx = nil
+					m.cancelTimer = nil
+
+					if err := m.taskService.Complete(); err != nil {
+						m.elapsed = err.Error()
+						return m, nil
+					}
+					m.isRunning = false
+					return m, nil
+				}
+				if it.title == "Show" {
+					currentTask, err := m.taskService.GetCurrentTask()
+					if err != nil {
+						m.elapsed = err.Error()
+						return m, nil
+					}
+					ctx := m.ensureTimer()
+					return m, countTime(ctx, currentTask)
+				}
+				if it.title == "Total" {
+					totalDuration := m.taskService.TotalDuration()
+					totalDuration = totalDuration.Truncate(1 * time.Second)
+					m.total = totalDuration.String()
+					return m, nil
+				}
+			}
+		case "ctrl+c":
+			if m.cancelTimer != nil {
+				m.cancelTimer()
+			}
+			return m, tea.Quit
+		}
+	case tickMsg:
+		m.elapsed = string(msg)
+		currentTask, _ := m.taskService.GetCurrentTask()
+		return m, countTime(m.timerCtx, currentTask)
+	case currentTaskMsg:
+		m.isRunning = msg.isRunning
+		m.total = msg.total
+		if m.isRunning {
+			currentTask, _ := m.taskService.GetCurrentTask()
+			ctx := m.ensureTimer()
+			return m, countTime(ctx, currentTask)
+		}
+
+		return m, nil
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
+	}
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+var (
+	leftStyle  = lipgloss.NewStyle().Width(40).Padding(0, 1)
+	rightStyle = lipgloss.NewStyle().Width(70).Padding(0, 1)
+)
+
+func rightView(m model) string {
+	if m.list.SelectedItem() == nil {
+		return "Select a menu item"
+	}
+
+	i := m.list.SelectedItem().(item)
+
+	switch i.title {
+	case "Start":
+		if m.isRunning {
+			return "Elapsed:\n\n" + m.elapsed
+		}
+		return "Start a new task"
+	case "Show":
+		if m.isRunning {
+			return "Elapsed:\n\n" + m.elapsed
+		}
+		return "There is no started task yet"
+	case "Total":
+		return "Total:\n\n" + m.total
+	case "Complete":
+		if m.isRunning {
+			return "Complete the task"
+		}
+		return "Task completed"
+	default:
+		return ""
+	}
+}
+
+func (m model) View() string {
+	left := leftStyle.Render(m.list.View())
+	right := rightStyle.Render(rightView(m))
+
+	ui := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+
+	return docStyle.Render(ui)
+}
+
+func isTaskRunning(ts *services.TaskService) tea.Cmd {
+	return func() tea.Msg {
+		totalDuration := ts.TotalDuration()
+		totalDuration = totalDuration.Truncate(1 * time.Second)
+		td := totalDuration.String()
+
+		_, err := ts.GetCurrentTask()
+		if err != nil {
+			return currentTaskMsg{isRunning: false, total: td}
+		}
+
+		return currentTaskMsg{isRunning: true, total: td}
 	}
 }
 
@@ -43,133 +228,37 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	// Initiate UI
-	ui := services.NewUI()
-
-	startFn := func() {
-		stopTimer()
-		task, err := taskService.Create()
-		if err != nil {
-			ui.SetDisplayText(err.Error())
-			return
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		cancelTimer = cancel
-		go countTime(ctx, task, func(text string) {
-			ui.SetDynamicDisplayText(text)
-		})
-	}
-	completeFn := func() {
-		stopTimer()
-		if err := taskService.Complete(); err != nil {
-			ui.SetDisplayText(err.Error())
-			return
-		}
-		ui.SetDisplayText("task completed")
-	}
-	showFn := func() {
-		stopTimer()
-		currentTask, err := taskService.GetCurrentTask()
-		if err != nil {
-			ui.SetDisplayText(err.Error())
-			return
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		cancelTimer = cancel
-		go countTime(ctx, currentTask, func(text string) {
-			ui.SetDynamicDisplayText(text)
-		})
-	}
-	totalFn := func() {
-		ui.SwitchToTextBase()
-		stopTimer()
-		totalDuration := taskService.TotalDuration()
-		totalDuration = totalDuration.Truncate(1 * time.Second)
-		ui.SetDisplayText(totalDuration.String())
-	}
-	resetFn := func() {
-		stopTimer()
-		if err := taskService.ResetData(); err != nil {
-			ui.SetDisplayText(err.Error())
-			return
-		}
-		ui.SetDisplayText("reset done")
-	}
-	manualFn := func() {
-		ui.SubmitForm(func(st, d string) {
-			startTime, err := stringToTime(st)
-			if err != nil {
-				logger.Fatal(err)
-			}
-			duration, err := time.ParseDuration(d)
-			if err != nil {
-				logger.Fatal(err)
-			}
-			endTime := startTime.Add(duration)
-			if err := taskService.AddManual(startTime, endTime); err != nil {
-				logger.Fatal(err)
-			}
-		})
-		ui.SwitchToForm()
-	}
-	closeFn := func() {
-		ui.Stop()
+	items := []list.Item{
+		item{title: "Start", desc: "Start the task"},
+		item{title: "Show", desc: "Show running task"},
+		item{title: "Complete", desc: "Complete the task"},
+		item{title: "Total", desc: "Total todays tasks"},
 	}
 
-	ui.AddMenuItem("start", "start the task", startFn)
-	ui.AddMenuItem("complete", "complete the task", completeFn)
-	ui.AddMenuItem("show", "show running task", showFn)
-	ui.AddMenuItem("total", "show total duration", totalFn)
-	ui.AddMenuItem("reset", "reset the data", resetFn)
-	ui.AddMenuItem("manual", "add manual task", manualFn)
-	ui.AddMenuItem("close", "close the timer", closeFn)
+	m := model{
+		list:        list.New(items, list.NewDefaultDelegate(), 0, 0),
+		taskService: taskService,
+	}
+	m.list.Title = "My Fave Things"
 
-	// Default show the running task
-	showFn()
+	p := tea.NewProgram(m, tea.WithAltScreen())
 
-	ui.Render()
+	if _, err := p.Run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
-func stringToTime(s string) (time.Time, error) {
-	timeArr := strings.Split(s, ":")
-	if len(timeArr) < 3 {
-		return time.Time{}, fmt.Errorf("need starting time format hh:mm::ss")
-	}
-
-	hh, mm, ss := timeArr[0], timeArr[1], timeArr[2]
-	hhInt, err := strconv.Atoi(hh)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cant get the hour")
-	}
-	mmInt, err := strconv.Atoi(mm)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cant get the minute")
-	}
-	ssInt, err := strconv.Atoi(ss)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cant get the second")
-	}
-
-	now := time.Now()
-	t := time.Date(now.Year(), now.Month(), now.Day(), hhInt, mmInt, ssInt, 0, now.Location())
-
-	return t, nil
-}
-
-func countTime(ctx context.Context, task *services.Task, update func(string)) {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
+func countTime(ctx context.Context, task *services.Task) tea.Cmd {
+	return func() tea.Msg {
 		select {
 		case <-ctx.Done():
-			return
-		case <-ticker.C:
+			return nil
+		case <-time.After(time.Second):
 			elapsed := time.Since(task.StartTime).
-				Truncate(1 * time.Second).
+				Truncate(time.Second).
 				String()
-			update(elapsed)
+			return tickMsg(elapsed)
 		}
 	}
-
 }
