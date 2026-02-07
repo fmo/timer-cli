@@ -99,6 +99,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 					m.isRunning = false
+					m.elapsed = "0"
 					return m, nil
 				}
 				if it.title == "Show" {
@@ -111,9 +112,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, countTime(ctx, currentTask)
 				}
 				if it.title == "Total" {
-					totalDuration := m.taskService.TotalDuration()
-					totalDuration = totalDuration.Truncate(1 * time.Second)
-					m.total = totalDuration.String()
+					m.total = m.taskService.TotalDuration()
 					return m, nil
 				}
 			}
@@ -193,10 +192,7 @@ func (m model) View() string {
 
 func isTaskRunning(ts *services.TaskService) tea.Cmd {
 	return func() tea.Msg {
-		totalDuration := ts.TotalDuration()
-		totalDuration = totalDuration.Truncate(1 * time.Second)
-		td := totalDuration.String()
-
+		td := ts.TotalDuration()
 		_, err := ts.GetCurrentTask()
 		if err != nil {
 			return currentTaskMsg{isRunning: false, total: td}

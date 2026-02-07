@@ -90,6 +90,8 @@ func (ts *TaskService) GetCurrentTask() (*Task, error) {
 	return ts.Tasks.GetCurrentTask()
 }
 
-func (ts *TaskService) TotalDuration() time.Duration {
-	return ts.Tasks.TotalDuration()
+func (ts *TaskService) TotalDuration() string {
+	totalDuration := ts.Tasks.TotalDuration()
+	totalDuration = totalDuration.Truncate(1 * time.Second)
+	return totalDuration.String()
 }
