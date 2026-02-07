@@ -16,7 +16,7 @@ import (
 
 type tickMsg string
 
-type currentTaskMsg struct {
+type taskStateMsg struct {
 	isRunning bool
 	total     string
 }
@@ -46,7 +46,7 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return isTaskRunning(m.taskService)
+	return initTaskState(m.taskService)
 }
 
 func (m *model) ensureTimer() context.Context {
@@ -99,7 +99,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 					m.isRunning = false
-					m.elapsed = "0"
+					m.elapsed = "0s"
 					return m, nil
 				}
 				if it.title == "Show" {
@@ -115,6 +115,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.total = m.taskService.TotalDuration()
 					return m, nil
 				}
+				if it.title == "Reset" {
+					if m.cancelTimer != nil {
+						m.cancelTimer()
+					}
+
+					m.timerCtx = nil
+					m.cancelTimer = nil
+
+					if err := m.taskService.ResetData(); err != nil {
+						m.elapsed = err.Error()
+					}
+
+					return m, nil
+				}
+				if it.title == "Close" {
+					return m, tea.Quit
+				}
 			}
 		case "ctrl+c":
 			if m.cancelTimer != nil {
@@ -126,7 +143,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.elapsed = string(msg)
 		currentTask, _ := m.taskService.GetCurrentTask()
 		return m, countTime(m.timerCtx, currentTask)
-	case currentTaskMsg:
+	case taskStateMsg:
 		m.isRunning = msg.isRunning
 		m.total = msg.total
 		if m.isRunning {
@@ -176,6 +193,10 @@ func rightView(m model) string {
 			return "Complete the task"
 		}
 		return "Task completed"
+	case "Reset":
+		return "Reset the tasks"
+	case "Close":
+		return "Close the app"
 	default:
 		return ""
 	}
@@ -190,15 +211,15 @@ func (m model) View() string {
 	return docStyle.Render(ui)
 }
 
-func isTaskRunning(ts *services.TaskService) tea.Cmd {
+func initTaskState(ts *services.TaskService) tea.Cmd {
 	return func() tea.Msg {
 		td := ts.TotalDuration()
 		_, err := ts.GetCurrentTask()
 		if err != nil {
-			return currentTaskMsg{isRunning: false, total: td}
+			return taskStateMsg{isRunning: false, total: td}
 		}
 
-		return currentTaskMsg{isRunning: true, total: td}
+		return taskStateMsg{isRunning: true, total: td}
 	}
 }
 
@@ -229,6 +250,8 @@ func main() {
 		item{title: "Show", desc: "Show running task"},
 		item{title: "Complete", desc: "Complete the task"},
 		item{title: "Total", desc: "Total todays tasks"},
+		item{title: "Reset", desc: "Reset csv"},
+		item{title: "Close", desc: "Closing the app"},
 	}
 
 	m := model{
