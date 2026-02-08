@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -30,14 +29,14 @@ var (
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
 )
 
+var docStyle = lipgloss.NewStyle().MarginTop(20).MarginLeft(56)
+
 type tickMsg string
 
 type taskStateMsg struct {
 	isRunning bool
 	total     string
 }
-
-var docStyle = lipgloss.NewStyle().MarginTop(20).MarginLeft(56)
 
 type item struct {
 	title, desc string
@@ -143,18 +142,10 @@ func (m model) updateManual(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s := msg.String()
 
 			if s == "enter" && m.focusIndex == len(m.inputs) {
-				startTime, err := stringToTime(m.inputs[0].Value())
-				if err != nil {
+				if err := m.taskService.AddManual(m.inputs[0].Value(), m.inputs[1].Value()); err != nil {
 					m.err = err.Error()
 					return m, nil
 				}
-				duration, err := time.ParseDuration(m.inputs[1].Value())
-				if err != nil {
-					m.err = err.Error()
-					return m, nil
-				}
-				endTime := startTime.Add(duration)
-				m.taskService.AddManual(startTime, endTime)
 				m.success = "task added successfully"
 
 				m.total = m.taskService.TotalDuration()
@@ -192,32 +183,6 @@ func (m model) updateManual(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	cmd := m.updateInputs(msg)
 	return m, cmd
-}
-
-func stringToTime(s string) (time.Time, error) {
-	timeArr := strings.Split(s, ":")
-	if len(timeArr) < 3 {
-		return time.Time{}, fmt.Errorf("need starting time format hh:mm::ss")
-	}
-
-	hh, mm, ss := timeArr[0], timeArr[1], timeArr[2]
-	hhInt, err := strconv.Atoi(hh)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cant get the hour")
-	}
-	mmInt, err := strconv.Atoi(mm)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cant get the minute")
-	}
-	ssInt, err := strconv.Atoi(ss)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cant get the second")
-	}
-
-	now := time.Now()
-	t := time.Date(now.Year(), now.Month(), now.Day(), hhInt, mmInt, ssInt, 0, now.Location())
-
-	return t, nil
 }
 
 func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
