@@ -2,6 +2,8 @@ package services
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fmo/timer-cli/pkg/logger"
@@ -48,7 +50,22 @@ func (ts *TaskService) Create() (*Task, error) {
 	return task, nil
 }
 
-func (ts *TaskService) AddManual(startTime, endTime time.Time) error {
+// AddManual Data came as;
+// StarTime 11:00:00
+// Duration 1h20m30s
+func (ts *TaskService) AddManual(st, d string) error {
+	startTime, err := stringToTime(st)
+	if err != nil {
+		return err
+	}
+
+	duration, err := time.ParseDuration(d)
+	if err != nil {
+		return err
+	}
+
+	endTime := startTime.Add(duration)
+
 	task := NewTask()
 	task.StartTime = startTime
 	task.Status = Done
@@ -94,4 +111,30 @@ func (ts *TaskService) TotalDuration() string {
 	totalDuration := ts.Tasks.TotalDuration()
 	totalDuration = totalDuration.Truncate(1 * time.Second)
 	return totalDuration.String()
+}
+
+func stringToTime(s string) (time.Time, error) {
+	timeArr := strings.Split(s, ":")
+	if len(timeArr) < 3 {
+		return time.Time{}, fmt.Errorf("need starting time format hh:mm::ss")
+	}
+
+	hh, mm, ss := timeArr[0], timeArr[1], timeArr[2]
+	hhInt, err := strconv.Atoi(hh)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("cant get the hour")
+	}
+	mmInt, err := strconv.Atoi(mm)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("cant get the minute")
+	}
+	ssInt, err := strconv.Atoi(ss)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("cant get the second")
+	}
+
+	now := time.Now()
+	t := time.Date(now.Year(), now.Month(), now.Day(), hhInt, mmInt, ssInt, 0, now.Location())
+
+	return t, nil
 }
