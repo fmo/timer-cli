@@ -68,7 +68,6 @@ type model struct {
 	inputs     []textinput.Model
 }
 
-// Init things
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		initTaskState(m.taskService),
@@ -76,6 +75,7 @@ func (m model) Init() tea.Cmd {
 	)
 }
 
+// initTaskState isRunning and total amount of task
 func initTaskState(ts *services.TaskService) tea.Cmd {
 	return func() tea.Msg {
 		td := ts.TotalDuration()
@@ -88,6 +88,7 @@ func initTaskState(ts *services.TaskService) tea.Cmd {
 	}
 }
 
+// initManualInputs with placeholder and the other details
 func (m *model) initManualInputs() {
 	m.inputs = make([]textinput.Model, 2)
 
@@ -110,6 +111,7 @@ func (m *model) initManualInputs() {
 	}
 }
 
+// ensureTimer arranges the context
 func (m *model) ensureTimer() context.Context {
 	if m.timerCtx == nil {
 		ctx, cancel := context.WithCancel(context.Background())
