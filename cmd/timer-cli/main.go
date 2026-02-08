@@ -155,6 +155,7 @@ func (m model) updateManual(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.taskService.AddManual(startTime, endTime)
 				m.success = "task added successfully"
 
+				m.total = m.taskService.TotalDuration()
 				m.manualMode = false
 				return m, nil
 			}
@@ -273,6 +274,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.isRunning = false
 					m.elapsed = "0s"
+					m.total = m.taskService.TotalDuration()
 					return m, nil
 				}
 				if it.title == "Show" {
