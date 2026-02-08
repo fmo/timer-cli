@@ -1,6 +1,6 @@
-## Single-task, single-user task manager
-
 <img width="650" height="770" alt="Screenshot 2026-02-08 at 08 46 35" src="https://github.com/user-attachments/assets/941566cd-1318-4d6e-bf3a-bc71a0f5954e" />
+
+## Single-task, single-user task manager
 
 This tool is based on how I personally track time. Most existing time-tracking tools feel too opinionated and come with many extras I don’t need. I also don’t like Pomodoro-style workflows.
 
